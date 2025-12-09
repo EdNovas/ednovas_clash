@@ -1,0 +1,31 @@
+appId: com.ednovas.cloud
+productName: "EdNovas云"
+compression: maximum
+# 🟢 仅保留中英文语言包，移除其他几十种语言
+electronLanguages:
+  - zh-CN
+  - en-US
+directories:
+  output: dist_electron
+files:
+  - "dist/**/*"
+  - "dist-electron/**/*"
+  - "package.json"
+  - "!**/*.map"
+  - "!node_modules/**/*" # 🟢 彻底排除 node_modules (因为 main.js 已经打包，且前端依赖已在 dist 中)
+# 关键配置：将 resources 目录打包到软件中
+extraResources:
+  - from: "resources/"
+    to: "resources/"
+win:
+  target: nsis
+  icon: "public/ezv9d7ezv9d7ezv9.jpg" # 确保你有一个图标文件
+  requestedExecutionLevel: requireAdministrator #如果需要TUN模式，最好请求管理员权限
+
+nsis:
+  oneClick: false # 🟢 关闭一键安装，允许用户点击下一步
+  allowToChangeInstallationDirectory: true # 🟢 允许用户修改安装目录
+  perMachine: true # 🟢 建议默认安装到 Program Files (全机可用)，设为 false 则默认 AppData (仅当前用户)
+  createDesktopShortcut: true # 🟢 创建桌面快捷方式
+  createStartMenuShortcut: true # 🟢 创建开始菜单快捷方式
+  shortcutName: "EdNovas云" # 快捷方式名称
