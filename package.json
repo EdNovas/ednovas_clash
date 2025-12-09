@@ -2,7 +2,7 @@
   "name": "ednovas-cloud",
   "productName": "EdNovas云",
   "description": "EdNovas云 官方客户端",
-  "author": "EdNovas",
+  "author": "EdNovas <ednovas@ednovas.tech>",
   "private": true,
   "version": "1.0.0",
   "main": "dist-electron/main.js",
