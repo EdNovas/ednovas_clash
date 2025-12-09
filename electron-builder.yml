@@ -42,9 +42,10 @@ linux:
     priority: optional
     compression: xz
   desktop:
-    StartupWMClass: ednovas-cloud
-    Icon: ednovas-cloud
-    Categories: Network;
+    entry:
+      StartupWMClass: ednovas-cloud
+      Icon: ednovas-cloud
+      Categories: Network;
 
 nsis:
   oneClick: false # 🟢 关闭一键安装，允许用户点击下一步
