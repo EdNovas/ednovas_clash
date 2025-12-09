@@ -29,3 +29,8 @@ nsis:
   createDesktopShortcut: true # 🟢 创建桌面快捷方式
   createStartMenuShortcut: true # 🟢 创建开始菜单快捷方式
   shortcutName: "EdNovas云" # 快捷方式名称
+
+publish:
+  provider: github
+  owner: "EdNovas"
+  repo: "ednovas_clash"
