@@ -108,10 +108,19 @@ const setSystemProxySync = (enable: boolean) => {
     }
 }
 
-const startClash = (configPath: string) => {
+const startClash = async (configPath: string) => {
     if (clashProcess) {
         try { clashProcess.kill() } catch (e) { }
     }
+    // 🟢 启动前先尝试清理旧进程 (防止端口占用)
+    try {
+        if (process.platform === 'win32') {
+            execSync('taskkill /f /im EdNovas-Core.exe', { stdio: 'ignore' });
+        } else {
+            execSync('pkill -f EdNovas-Core', { stdio: 'ignore' });
+        }
+    } catch (e) { }
+
     try {
         const binaryPath = getClashBinaryPath();
 
@@ -125,6 +134,10 @@ const startClash = (configPath: string) => {
         }
 
         const configDir = path.dirname(configPath);
+
+        // 增加 1秒 延迟确保端口释放
+        await new Promise(r => setTimeout(r, 1000));
+
         clashProcess = spawn(binaryPath, ['-d', configDir, '-f', configPath]);
 
         clashProcess.stdout?.on('data', (data) => {

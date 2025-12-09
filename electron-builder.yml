@@ -34,7 +34,17 @@ linux:
     - deb
   icon: "public/icon.png"
   category: Network
+  maintainer: "EdNovas <ednovas@ednovas.tech>"
+  synopsis: "EdNovas Cloud Proxy Client"
+  description: "Official desktop client for EdNovas Cloud services."
   artifactName: "EdNovas-Cloud-${version}-Linux-${arch}.${ext}"
+  deb:
+    priority: optional
+    compression: xz
+  desktop:
+    StartupWMClass: ednovas-cloud
+    Icon: ednovas-cloud
+    Categories: Network;
 
 nsis:
   oneClick: false # 🟢 关闭一键安装，允许用户点击下一步
