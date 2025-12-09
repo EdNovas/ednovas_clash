@@ -22,6 +22,18 @@ win:
   icon: "public/ezv9d7ezv9d7ezv9.jpg" # 确保你有一个图标文件
   requestedExecutionLevel: requireAdministrator #如果需要TUN模式，最好请求管理员权限
 
+mac:
+  target: dmg
+  icon: "public/ezv9d7ezv9d7ezv9.jpg"
+
+linux:
+  target:
+    - AppImage
+    - deb
+  icon: "public/ezv9d7ezv9d7ezv9.jpg"
+  category: Network
+
+
 nsis:
   oneClick: false # 🟢 关闭一键安装，允许用户点击下一步
   allowToChangeInstallationDirectory: true # 🟢 允许用户修改安装目录

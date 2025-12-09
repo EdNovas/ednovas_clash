@@ -56,16 +56,55 @@ const initGeoFiles = (userDataPath: string) => {
 
 // 🟢 同步设置系统代理 (保证退出时能立即执行)
 const setSystemProxySync = (enable: boolean) => {
-    if (process.platform !== 'win32') return;
-    try {
-        if (enable) {
-            execSync(`reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /t REG_DWORD /d 1 /f`);
-            execSync(`reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyServer /t REG_SZ /d "127.0.0.1:7890" /f`);
-        } else {
-            execSync(`reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /t REG_DWORD /d 0 /f`);
+    if (process.platform === 'win32') {
+        try {
+            if (enable) {
+                execSync(`reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /t REG_DWORD /d 1 /f`);
+                execSync(`reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyServer /t REG_SZ /d "127.0.0.1:7890" /f`);
+            } else {
+                execSync(`reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /t REG_DWORD /d 0 /f`);
+            }
+        } catch (e) {
+            console.error('Windows Proxy Set Error:', e);
         }
-    } catch (e) {
-        console.error('Proxy Set Error:', e);
+    } else if (process.platform === 'darwin') {
+        try {
+            const services = ['Wi-Fi', 'Ethernet', 'Thunderbolt Ethernet', 'USB 10/100/1000 LAN'];
+            services.forEach(service => {
+                try {
+                    if (enable) {
+                        execSync(`networksetup -setwebproxy "${service}" 127.0.0.1 7890`);
+                        execSync(`networksetup -setsecurewebproxy "${service}" 127.0.0.1 7890`);
+                        execSync(`networksetup -setsocksfirewallproxy "${service}" 127.0.0.1 7890`);
+                    } else {
+                        execSync(`networksetup -setwebproxystate "${service}" off`);
+                        execSync(`networksetup -setsecurewebproxystate "${service}" off`);
+                        execSync(`networksetup -setsocksfirewallproxystate "${service}" off`);
+                    }
+                } catch (e) {
+                    // Ignore errors for services that don't exist
+                }
+            });
+        } catch (e) {
+            console.error('Mac Proxy Set Error:', e);
+        }
+    } else if (process.platform === 'linux') {
+        try {
+            // 简单适配 GNOME 环境
+            if (enable) {
+                execSync('gsettings set org.gnome.system.proxy mode "manual"');
+                execSync('gsettings set org.gnome.system.proxy.http host "127.0.0.1"');
+                execSync('gsettings set org.gnome.system.proxy.http port 7890');
+                execSync('gsettings set org.gnome.system.proxy.https host "127.0.0.1"');
+                execSync('gsettings set org.gnome.system.proxy.https port 7890');
+                execSync('gsettings set org.gnome.system.proxy.socks host "127.0.0.1"');
+                execSync('gsettings set org.gnome.system.proxy.socks port 7890');
+            } else {
+                execSync('gsettings set org.gnome.system.proxy mode "none"');
+            }
+        } catch (e) {
+            console.error('Linux Proxy Set Error:', e);
+        }
     }
 }
 
@@ -75,6 +114,16 @@ const startClash = (configPath: string) => {
     }
     try {
         const binaryPath = getClashBinaryPath();
+
+        // 🟢 Ensure binary is executable on macOS/Linux
+        if (process.platform !== 'win32') {
+            try {
+                fs.chmodSync(binaryPath, 0o755);
+            } catch (e) {
+                console.error('Failed to chmod binary:', e);
+            }
+        }
+
         const configDir = path.dirname(configPath);
         clashProcess = spawn(binaryPath, ['-d', configDir, '-f', configPath]);
 

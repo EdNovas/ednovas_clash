@@ -3,14 +3,58 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*' # 当推送 v 开头的 tag 时触发 (如 v1.0.0)
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   release:
-    runs-on: windows-latest
+    name: Build ${{ matrix.os }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows x64
+          - os: windows-latest
+            arch: x64
+            mihomo_url: https://github.com/MetaCubeX/mihomo/releases/download/v1.19.17/mihomo-windows-amd64-v1.19.17.zip
+            mihomo_extract: unzip
+            binary_name: EdNovas-Core.exe
+            build_args: --win --x64
 
-    permissions:
-      contents: write # 允许发布 Release
+          # MacOS x64 (Intel)
+          - os: macos-latest
+            arch: x64
+            mihomo_url: https://github.com/MetaCubeX/mihomo/releases/download/v1.19.17/mihomo-darwin-amd64-v1.19.17.gz
+            mihomo_extract: gunzip
+            binary_name: EdNovas-Core
+            build_args: --mac --x64
+
+          # MacOS ARM64 (Apple Silicon)
+          - os: macos-latest
+            arch: arm64
+            mihomo_url: https://github.com/MetaCubeX/mihomo/releases/download/v1.19.17/mihomo-darwin-arm64-v1.19.17.gz
+            mihomo_extract: gunzip
+            binary_name: EdNovas-Core
+            build_args: --mac --arm64
+
+          # Linux x64
+          - os: ubuntu-latest
+            arch: x64
+            mihomo_url: https://github.com/MetaCubeX/mihomo/releases/download/v1.19.17/mihomo-linux-amd64-v1.19.17.gz
+            mihomo_extract: gunzip
+            binary_name: EdNovas-Core
+            build_args: --linux --x64
+
+          # Linux ARM64
+          - os: ubuntu-latest
+            arch: arm64
+            mihomo_url: https://github.com/MetaCubeX/mihomo/releases/download/v1.19.17/mihomo-linux-arm64-v1.19.17.gz
+            mihomo_extract: gunzip
+            binary_name: EdNovas-Core
+            build_args: --linux --arm64
 
     steps:
       - name: Checkout Code
@@ -31,13 +75,35 @@ jobs:
       - name: Set Version from Tag
         shell: bash
         run: |
-          # 提取 tag 名称 (例如 v1.0.5 -> 1.0.5)
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "Setting version to $VERSION"
           npm version $VERSION --no-git-tag-version
 
+      - name: Setup Clash Core (Automatic Download)
+        shell: bash
+        run: |
+          echo "Downloading Core from ${{ matrix.mihomo_url }}"
+          curl -L -o core_download "${{ matrix.mihomo_url }}"
+          
+          mkdir -p resources/bin
+          
+          if [ "${{ matrix.mihomo_extract }}" == "unzip" ]; then
+            unzip -o core_download -d temp_core
+            # 查找解压后的 exe 文件 (不区分大小写)
+            find temp_core -name "*.exe" -exec mv {} resources/bin/${{ matrix.binary_name }} \;
+            rm -rf temp_core
+          else
+            # Gzip (Linux/Mac)
+            gunzip -c core_download > resources/bin/${{ matrix.binary_name }}
+          fi
+          
+          chmod +x resources/bin/${{ matrix.binary_name }}
+          
+          echo "Core setup complete:"
+          ls -l resources/bin/
+
       - name: Build and Release Electron App
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # GitHub 自动生成的 Token
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npm exec electron-builder -- --publish always
+          npm exec electron-builder -- --publish always ${{ matrix.build_args }}
