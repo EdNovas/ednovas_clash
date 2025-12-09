@@ -28,6 +28,14 @@ jobs:
       - name: Build React App
         run: npm run build
 
+      - name: Set Version from Tag
+        shell: bash
+        run: |
+          # 提取 tag 名称 (例如 v1.0.5 -> 1.0.5)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Setting version to $VERSION"
+          npm version $VERSION --no-git-tag-version
+
       - name: Build and Release Electron App
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # GitHub 自动生成的 Token
