@@ -34,3 +34,5 @@ publish:
   provider: github
   owner: "EdNovas"
   repo: "ednovas_clash"
+  private: false
+  draft: false
