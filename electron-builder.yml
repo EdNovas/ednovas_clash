@@ -19,18 +19,18 @@ extraResources:
     to: "resources/"
 win:
   target: nsis
-  icon: "public/ezv9d7ezv9d7ezv9.jpg" # 确保你有一个图标文件
+  icon: "public/icon.png" # 确保你有一个图标文件
   requestedExecutionLevel: requireAdministrator #如果需要TUN模式，最好请求管理员权限
 
 mac:
   target: dmg
-  icon: "public/ezv9d7ezv9d7ezv9.jpg"
+  icon: "public/icon.png"
 
 linux:
   target:
     - AppImage
     - deb
-  icon: "public/ezv9d7ezv9d7ezv9.jpg"
+  icon: "public/icon.png"
   category: Network
 
 
