@@ -1,6 +1,6 @@
 # EdNovas 云客户端
 
-![Logo](https://raw.githubusercontent.com/EdNovas/ednovas_clash/refs/heads/main/public/ezv9d7ezv9d7ezv9.jpg) (如果需要可以替换为您自己的Logo URL)
+![Sample](https://raw.githubusercontent.com/EdNovas/ednovas_clash/refs/heads/main/photo_2025-12-09_13-55-24.jpg) 
 
 一个基于 Electron + React + Clash Meta 内核的现代化代理客户端，专为 Windows 用户设计。
 
