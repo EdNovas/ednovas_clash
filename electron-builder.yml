@@ -21,10 +21,12 @@ win:
   target: nsis
   icon: "public/icon.png" # 确保你有一个图标文件
   requestedExecutionLevel: requireAdministrator #如果需要TUN模式，最好请求管理员权限
+  artifactName: "EdNovas-Cloud-${version}-Windows-x64.${ext}"
 
 mac:
   target: dmg
   icon: "public/icon.png"
+  artifactName: "EdNovas-Cloud-${version}-macOS-${arch}.${ext}"
 
 linux:
   target:
@@ -32,7 +34,7 @@ linux:
     - deb
   icon: "public/icon.png"
   category: Network
-
+  artifactName: "EdNovas-Cloud-${version}-Linux-${arch}.${ext}"
 
 nsis:
   oneClick: false # 🟢 关闭一键安装，允许用户点击下一步
@@ -41,8 +43,3 @@ nsis:
   createDesktopShortcut: true # 🟢 创建桌面快捷方式
   createStartMenuShortcut: true # 🟢 创建开始菜单快捷方式
   shortcutName: "EdNovas云" # 快捷方式名称
-
-publish:
-  - provider: github
-    owner: "EdNovas"
-    repo: "ednovas_clash"
