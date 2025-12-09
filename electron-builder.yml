@@ -31,8 +31,6 @@ nsis:
   shortcutName: "EdNovas云" # 快捷方式名称
 
 publish:
-  provider: github
-  owner: "EdNovas"
-  repo: "ednovas_clash"
-  private: false
-  draft: false
+  - provider: github
+    owner: "EdNovas"
+    repo: "ednovas_clash"
