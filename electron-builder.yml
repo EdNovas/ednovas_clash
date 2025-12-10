@@ -58,3 +58,4 @@ nsis:
   createDesktopShortcut: true # 🟢 创建桌面快捷方式
   createStartMenuShortcut: true # 🟢 创建开始菜单快捷方式
   shortcutName: "EdNovas云" # 快捷方式名称
+  deleteAppDataOnUninstall: true # 🟢 卸载时清除用户数据 (配置、缓存等)
