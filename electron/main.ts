@@ -279,26 +279,34 @@ const createWindow = () => {
 }
 
 // Add relaunch-as-admin handler
-ipcMain.handle('relaunch-as-admin', () => {
-    const exe = app.getPath('exe');
-    // 使用 Start-Process 并传递参数，确保路径被正确引用
-    const cmd = `Start-Process -FilePath "${exe}" -Verb RunAs`;
-    console.log('Relaunching:', cmd);
+ipcMain.handle('relaunch-as-admin', async () => {
+    return new Promise((resolve) => {
+        const exe = app.getPath('exe');
+        // 🟢 使用 exec 配合 PowerShell Start-Process，并严格处理引号以支持带空格的路径
+        // 注意：PowerShell 中字符串可以用单引号
+        const cmd = `Start-Process -FilePath '${exe}' -Verb RunAs`;
+        console.log('Relaunching:', cmd);
 
-    // Log relaunch
-    try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Relaunch] Relaunching as admin: ${cmd}\n`); } catch (e) { }
+        try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Relaunch] Executing: powershell -Command "${cmd}"\n`); } catch (e) { }
 
-    const child = spawn('powershell.exe', ['-Command', cmd], {
-        detached: true,
-        stdio: 'ignore'
+        // 使用 exec 执行命令，因为这能更好地处理引号，并且提供回调
+        const { exec } = require('child_process');
+        exec(`powershell -Command "${cmd}"`, (error: any, stdout: any, stderr: any) => {
+            if (error) {
+                // 用户拒绝 UAC 或其他错误
+                const msg = error.message || stderr;
+                console.error('Relaunch failed:', msg);
+                try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Relaunch Error] ${msg}\n`); } catch (e) { }
+                resolve({ success: false, error: msg });
+            } else {
+                // 启动成功，退出当前实例
+                try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Relaunch Success] Quitting app.\n`); } catch (e) { }
+                isQuitting = true;
+                app.exit(0);
+                resolve({ success: true });
+            }
+        });
     });
-    child.unref();
-
-    isQuitting = true;
-    // 🟢 延迟退出，给 PowerShell 足够的启动时间
-    setTimeout(() => {
-        app.exit(0);
-    }, 1000);
 });
 
 // Add check-is-admin handler
