@@ -165,7 +165,7 @@ const createWindow = () => {
         width: 1100, height: 750,
         minWidth: 900, minHeight: 600,
         center: true,
-        title: 'EdNovas云', // 🟢 设置标题
+        title: 'EdNovas Cloud', // 🟢 设置标题
         icon: path.join(__dirname, process.env.VITE_DEV_SERVER_URL ? '../public/ezv9d7ezv9d7ezv9.jpg' : '../dist/ezv9d7ezv9d7ezv9.jpg'), // 🟢 设置图标
         titleBarStyle: 'hidden', // 🟢 隐藏原生标题栏背景
         titleBarOverlay: {

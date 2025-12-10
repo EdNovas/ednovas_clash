@@ -1,5 +1,5 @@
 appId: com.ednovas.cloud
-productName: "EdNovas云"
+productName: "EdNovas Cloud"
 compression: maximum
 # 🟢 仅保留中英文语言包，移除其他几十种语言
 electronLanguages:
@@ -40,6 +40,7 @@ linux:
     - deb
   icon: "public/icon.png"
   category: Network
+  executableName: "ednovas-cloud"
   maintainer: "EdNovas <ednovas@ednovas.tech>"
   synopsis: "EdNovas Cloud Proxy Client"
   description: "Official desktop client for EdNovas Cloud services."
