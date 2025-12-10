@@ -246,20 +246,6 @@ const createTray = () => {
     });
 }
 
-// ... (createWindow and other parts remain same) ...
-
-// Add relaunch-as-admin handler
-ipcMain.handle('relaunch-as-admin', () => {
-    const exe = app.getPath('exe');
-    // 使用 Start-Process 并传递参数，确保路径被正确引用
-    // 关键修复：PowerShell 中路径如果有空格，需要外层加引号
-    const cmd = `Start-Process -FilePath "${exe}" -Verb RunAs`;
-    console.log('Relaunching:', cmd);
-    spawn('powershell.exe', ['-Command', cmd], { detached: true, stdio: 'ignore' });
-    isQuitting = true;
-    app.quit();
-});
-
 const createWindow = () => {
     mainWindow = new BrowserWindow({
         width: 1100, height: 750,
@@ -292,53 +278,21 @@ const createWindow = () => {
     });
 }
 
-app.whenReady().then(() => {
-    createWindow();
-    createTray();
+// Add relaunch-as-admin handler
+ipcMain.handle('relaunch-as-admin', () => {
+    const exe = app.getPath('exe');
+    // 使用 Start-Process 并传递参数，确保路径被正确引用
+    const cmd = `Start-Process -FilePath "${exe}" -Verb RunAs`;
+    console.log('Relaunching:', cmd);
 
-    ipcMain.handle('start-clash-service', async (event, configContent) => {
-        try {
-            const userDataPath = app.getPath('userData');
-            if (!fs.existsSync(userDataPath)) fs.mkdirSync(userDataPath, { recursive: true });
+    // Log relaunch
+    try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Relaunch] Relaunching as admin: ${cmd}\n`); } catch (e) { }
 
-            // 🟢 检查并复制 GEO 数据库
-            initGeoFiles(userDataPath);
+    spawn('powershell.exe', ['-Command', cmd], { detached: true, stdio: 'ignore' });
+    isQuitting = true;
+    app.exit(0); // 🟢 强制立即退出，防止锁释放慢
+});
 
-            const configPath = path.join(userDataPath, 'config.yaml');
-            fs.writeFileSync(configPath, configContent, 'utf-8');
-            startClash(configPath);
-            return { success: true, msg: 'Clash 已启动' }
-        } catch (error: any) {
-            return { success: false, msg: error.message }
-        }
-    })
-
-    ipcMain.handle('set-system-proxy', (_event, enable: boolean) => {
-        setSystemProxySync(enable);
-        return { success: true };
-    });
-
-    ipcMain.on('open-external', (_event, url: string) => {
-        const { shell } = require('electron');
-        shell.openExternal(url);
-    });
-
-    // 🟢 开机自启控制
-    ipcMain.handle('get-auto-start', () => {
-        return app.getLoginItemSettings().openAtLogin;
-    });
-
-    ipcMain.handle('set-auto-start', (_event, enable: boolean) => {
-        app.setLoginItemSettings({
-            openAtLogin: enable,
-            path: process.execPath, // 明确指定可执行文件路径
-            args: []
-        });
-        return { success: true };
-    });
-})
-
-// 🟢 退出时强制清理 (防断网)
 // Add check-is-admin handler
 ipcMain.handle('check-is-admin', () => {
     try {
@@ -349,7 +303,72 @@ ipcMain.handle('check-is-admin', () => {
     }
 });
 
+// 🟢 单实例锁 (防止开启多个窗口)
+const gotTheLock = app.requestSingleInstanceLock();
 
+if (!gotTheLock) {
+    try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Startup] Duplicate instance detected. Quitting.\n`); } catch (e) { }
+    app.quit();
+} else {
+    try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Startup] Instance lock acquired. Starting main window.\n`); } catch (e) { }
+
+    app.on('second-instance', (_event, _commandLine, _workingDirectory) => {
+        try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Event] Second instance triggered. Focusing main window.\n`); } catch (e) { }
+        // 当运行第二个实例时，聚焦到主窗口
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            // 如果窗口隐藏 (托盘模式)，则显示
+            if (!mainWindow.isVisible()) mainWindow.show();
+            mainWindow.focus();
+        }
+    });
+
+    app.whenReady().then(() => {
+        createWindow();
+        createTray();
+
+        ipcMain.handle('start-clash-service', async (event, configContent) => {
+            try {
+                const userDataPath = app.getPath('userData');
+                if (!fs.existsSync(userDataPath)) fs.mkdirSync(userDataPath, { recursive: true });
+
+                // 🟢 检查并复制 GEO 数据库
+                initGeoFiles(userDataPath);
+
+                const configPath = path.join(userDataPath, 'config.yaml');
+                fs.writeFileSync(configPath, configContent, 'utf-8');
+                startClash(configPath);
+                return { success: true, msg: 'Clash 已启动' }
+            } catch (error: any) {
+                return { success: false, msg: error.message }
+            }
+        })
+
+        ipcMain.handle('set-system-proxy', (_event, enable: boolean) => {
+            setSystemProxySync(enable);
+            return { success: true };
+        });
+
+        ipcMain.on('open-external', (_event, url: string) => {
+            const { shell } = require('electron');
+            shell.openExternal(url);
+        });
+
+        // 🟢 开机自启控制
+        ipcMain.handle('get-auto-start', () => {
+            return app.getLoginItemSettings().openAtLogin;
+        });
+
+        ipcMain.handle('set-auto-start', (_event, enable: boolean) => {
+            app.setLoginItemSettings({
+                openAtLogin: enable,
+                path: process.execPath, // 明确指定可执行文件路径
+                args: []
+            });
+            return { success: true };
+        });
+    })
+}
 
 app.on('before-quit', () => {
     setSystemProxySync(false);

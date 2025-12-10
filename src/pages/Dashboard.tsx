@@ -59,6 +59,79 @@ const Dashboard = () => {
     // 开机自启状态
     const [autoStart, setAutoStart] = useState(false);
 
+    const [delays, setDelays] = useState<{ [key: string]: number | string }>({});
+
+    const testGroupLatency = async (groupName: string) => {
+        const group = proxyGroups.find(g => g.name === groupName);
+        if (!group) return;
+
+        addLog(`⚡ 开始测速: ${groupName}`);
+        const newDelays = { ...delays };
+
+        // 🟢 并发测速
+        const promises = group.all.map(async (nodeName) => {
+            // 跳过 DIRECT, REJECT 等特殊节点
+            if (nodeName === 'DIRECT' || nodeName === 'REJECT' || nodeName === 'GLOBAL') return;
+
+            try {
+                // 使用 Clash API 测速
+                newDelays[nodeName] = '...'; // Loading state
+                setDelays({ ...newDelays });
+
+                const res = await axios.get(`${CLASH_API_URL}/proxies/${encodeURIComponent(nodeName)}/delay`, {
+                    params: { timeout: 2000, url: 'http://www.gstatic.com/generate_204' }
+                });
+                newDelays[nodeName] = res.data.delay;
+            } catch (e) {
+                newDelays[nodeName] = -1; // Timeout/Error
+            }
+        });
+
+        await Promise.all(promises);
+        setDelays(prev => ({ ...prev, ...newDelays }));
+        addLog(`✅ 测速完成: ${groupName}`);
+    };
+
+    // ... (existing code) ...
+
+                                    <div style={isMain ? styles.mainGroupName : styles.groupName}>
+                                        {group.name}
+                                        {isMain && <span style={styles.mainTag}>核心</span>}
+                                        <span 
+                                            onClick={() => testGroupLatency(group.name)} 
+                                            style={{ marginLeft: 'auto', cursor: 'pointer', fontSize: '14px', opacity: 0.8 }} 
+                                            title="一键测速"
+                                        >
+                                            ⚡
+                                        </span>
+                                    </div>
+                                    <div style={styles.groupSelectWrapper}>
+                                        <select
+                                            value={group.now}
+                                            onChange={(e) => changeGroupNode(group.name, e.target.value)}
+                                            style={styles.groupSelect}
+                                        >
+                                            {group.all.map(node => {
+                                                let delayText = '';
+                                                const d = delays[node];
+                                                if (d === '...') delayText = ' ⏳';
+                                                else if (d === -1) delayText = ' ❌';
+                                                else if (typeof d === 'number') delayText = ` ${d}ms`;
+                                                
+                                                return (
+                                                    <option key={node} value={node}>
+                                                        {node}{delayText}
+                                                    </option>
+                                                )
+                                            })}
+                                        </select>
+                                        <div style={isMain ? styles.mainSelectedNodeTag : styles.selectedNodeTag}>
+                                            {group.now} 
+                                            {delays[group.now] && typeof delays[group.now] === 'number' && <span style={{color: '#42e695', marginLeft: 8}}>{delays[group.now]}ms</span>}
+                                            <span style={{ float: 'right', opacity: 0.5 }}>▼</span>
+                                        </div>
+                                    </div>
+
     const wsRef = useRef<WebSocket | null>(null);
     const hasAutoStarted = useRef(false);
 
@@ -330,12 +403,32 @@ const Dashboard = () => {
         } catch (e) { }
     };
 
+    // 🟢 自动恢复 TUN 模式 (重启后)
+    useEffect(() => {
+        const checkPendingTun = async () => {
+            const pending = localStorage.getItem('pendingTunMode');
+            if (pending === 'true' && ipcRenderer) {
+                const isAdmin = await ipcRenderer.invoke('check-is-admin');
+                if (isAdmin) {
+                    addLog('🛡️ 检测到重启，自动开启 TUN 模式...');
+                    setTunMode(true);
+                    setTimeout(startClashCore, 1000); // 稍等片刻启动
+                }
+                localStorage.removeItem('pendingTunMode');
+            }
+        };
+        checkPendingTun();
+    }, []);
+
+    // ... (existing code) ...
+
     const toggleTunMode = async () => {
         // 🟢 检查管理员权限 (仅当尝试开启 TUN 时)
         if (!tunMode && ipcRenderer) {
             const isAdmin = await ipcRenderer.invoke('check-is-admin');
             if (!isAdmin) {
                 if (confirm('启用 TUN 模式需要管理员权限。\n\n是否立即以管理员身份重启软件？')) {
+                    localStorage.setItem('pendingTunMode', 'true'); // 🟢 标记重启意图
                     await ipcRenderer.invoke('relaunch-as-admin');
                 }
                 return; // 无论是否确认重启，都先中断当前操作
