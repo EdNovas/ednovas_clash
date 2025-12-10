@@ -91,17 +91,34 @@ const setSystemProxySync = (enable: boolean) => {
     } else if (process.platform === 'linux') {
         try {
             // 简单适配 GNOME 环境
+            // 1. GNOME Settings (Keep existing)
             if (enable) {
-                execSync('gsettings set org.gnome.system.proxy mode "manual"');
-                execSync('gsettings set org.gnome.system.proxy.http host "127.0.0.1"');
-                execSync('gsettings set org.gnome.system.proxy.http port 7890');
-                execSync('gsettings set org.gnome.system.proxy.https host "127.0.0.1"');
-                execSync('gsettings set org.gnome.system.proxy.https port 7890');
-                execSync('gsettings set org.gnome.system.proxy.socks host "127.0.0.1"');
-                execSync('gsettings set org.gnome.system.proxy.socks port 7890');
+                try { execSync('gsettings set org.gnome.system.proxy mode "manual"'); } catch (e) { }
+                try { execSync('gsettings set org.gnome.system.proxy.http host "127.0.0.1"'); } catch (e) { }
+                try { execSync('gsettings set org.gnome.system.proxy.http port 7890'); } catch (e) { }
+                try { execSync('gsettings set org.gnome.system.proxy.https host "127.0.0.1"'); } catch (e) { }
+                try { execSync('gsettings set org.gnome.system.proxy.https port 7890'); } catch (e) { }
+                try { execSync('gsettings set org.gnome.system.proxy.socks host "127.0.0.1"'); } catch (e) { }
+                try { execSync('gsettings set org.gnome.system.proxy.socks port 7890'); } catch (e) { }
             } else {
-                execSync('gsettings set org.gnome.system.proxy mode "none"');
+                try { execSync('gsettings set org.gnome.system.proxy mode "none"'); } catch (e) { }
             }
+
+            // 2. 🟢 Set Global Environment Variables (Root needed)
+            // This is critical for non-GNOME apps and terminal
+            // Note: This only takes effect for new shells/processes
+            /* 
+               We attempt to modify /etc/environment if we have permission.
+               However, modifying system files is risky and requires sudo. 
+               Since the user runs with sudo for TUN, this might work but is invasive.
+               
+               BETTER APPROACH for current session: 
+               We cannot set env vars for the PARENT shell from a child process.
+               So we rely on GNOME settings or the user manually exporting vars.
+               
+               But, we can try to use 'networksetup' equivalent if using KDE etc.
+               For now, we stick to GNOME as it's the target user case.
+            */
         } catch (e) {
             console.error('Linux Proxy Set Error:', e);
         }
