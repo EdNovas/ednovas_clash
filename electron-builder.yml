@@ -54,8 +54,9 @@ linux:
 nsis:
   oneClick: false # 🟢 关闭一键安装，允许用户点击下一步
   allowToChangeInstallationDirectory: true # 🟢 允许用户修改安装目录
-  perMachine: false # 🟢 改为 false (默认安装到 AppData)，配合 asInvoker 使用，无需权限也能写日志/自动更新
+  perMachine: true # 🟢 改为 true (强制管理员权限安装)，解决安装过程闪退或权限不足的问题
   createDesktopShortcut: true # 🟢 创建桌面快捷方式
   createStartMenuShortcut: true # 🟢 创建开始菜单快捷方式
   shortcutName: "EdNovasCloud" # 快捷方式名称
+  runAfterFinish: true # 🟢 安装完成后显示运行选项
 

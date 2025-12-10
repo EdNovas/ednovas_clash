@@ -288,9 +288,17 @@ ipcMain.handle('relaunch-as-admin', () => {
     // Log relaunch
     try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Relaunch] Relaunching as admin: ${cmd}\n`); } catch (e) { }
 
-    spawn('powershell.exe', ['-Command', cmd], { detached: true, stdio: 'ignore' });
+    const child = spawn('powershell.exe', ['-Command', cmd], {
+        detached: true,
+        stdio: 'ignore'
+    });
+    child.unref();
+
     isQuitting = true;
-    app.exit(0); // 🟢 强制立即退出，防止锁释放慢
+    // 🟢 延迟退出，给 PowerShell 足够的启动时间
+    setTimeout(() => {
+        app.exit(0);
+    }, 1000);
 });
 
 // Add check-is-admin handler
