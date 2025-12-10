@@ -145,11 +145,11 @@ const startClash = async (configPath: string) => {
         clashProcess = spawn(binaryPath, ['-d', configDir, '-f', configPath]);
 
         clashProcess.stdout?.on('data', (data) => {
-            if (mainWindow) mainWindow.webContents.send('clash-log', data.toString());
+            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('clash-log', data.toString());
         });
         clashProcess.stderr?.on('data', (data) => {
             const msg = data.toString();
-            if (mainWindow) mainWindow.webContents.send('clash-log', `❌ ${msg}`);
+            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('clash-log', `❌ ${msg}`);
             // Check for port error specifically
             if (msg.includes('bind: address already in use')) {
                 console.error('Port still in use!');
