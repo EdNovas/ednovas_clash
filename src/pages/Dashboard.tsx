@@ -80,6 +80,43 @@ const Dashboard = () => {
     const [delays, setDelays] = useState<{ [key: string]: number | string }>({});
     const [testingGroups, setTestingGroups] = useState<Set<string>>(new Set());
 
+    // 🟢 下拉菜单状态
+    const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
+    // 🟢 点击外部关闭下拉菜单
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (!target.closest('.custom-dropdown-trigger') && !target.closest('.custom-dropdown-list')) {
+                setActiveDropdown(null);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
+
+    // 🟢 渲染带 Emoji 图片的节点名称
+    const renderNodeName = (name: string) => {
+        // 匹配区域指示符 (Flags)
+        const parts = name.split(/(\p{RI}\p{RI})/gu);
+        return parts.map((part, i) => {
+            if (part.match(/\p{RI}\p{RI}/gu)) {
+                // 将 Flag 转换为 Twemoji URL
+                const code = [...part].map(c => c.codePointAt(0)!.toString(16)).join('-');
+                return (
+                    <img
+                        key={i}
+                        src={`https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`}
+                        style={{ height: '1.2em', verticalAlign: '-0.2em', margin: '0 2px' }}
+                        alt={part}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                );
+            }
+            return <span key={i}>{part}</span>;
+        });
+    };
+
     // 🟢 软件更新相关状态
     const [showUpdateModal, setShowUpdateModal] = useState(false);
     const [remoteVersion, setRemoteVersion] = useState('');
@@ -318,12 +355,25 @@ const Dashboard = () => {
 
             // 配置文件修正
             let fixedConfig = configContent;
-            if (fixedConfig.includes('external-controller')) {
-                fixedConfig = fixedConfig.replace(/^external-controller:.*$/m, `external-controller: '127.0.0.1:${PORT}'`);
-                fixedConfig = fixedConfig.replace(/^secret:.*$/m, "secret: ''");
-            } else {
-                fixedConfig = `external-controller: '127.0.0.1:${PORT}'\nsecret: ''\n${fixedConfig}`;
-            }
+
+            // 🟢 强制修改端口为 22222 (避免与 7890 冲突)
+            const PROXY_PORT = 22222;
+
+            // 移除旧端口配置 (如果存在)
+            fixedConfig = fixedConfig.replace(/^port:.*$/m, '');
+            fixedConfig = fixedConfig.replace(/^socks-port:.*$/m, '');
+            fixedConfig = fixedConfig.replace(/^mixed-port:.*$/m, '');
+
+            // 🟢 移除其他可能冲突的已有配置
+            fixedConfig = fixedConfig.replace(/^allow-lan:.*$/m, '');
+            fixedConfig = fixedConfig.replace(/^bind-address:.*$/m, '');
+            fixedConfig = fixedConfig.replace(/^external-controller:.*$/m, '');
+            fixedConfig = fixedConfig.replace(/^secret:.*$/m, '');
+
+            // 注入新配置 (放到最前面)
+            const prefixConfig = `mixed-port: ${PROXY_PORT}\nallow-lan: true\nbind-address: '*'\nexternal-controller: '127.0.0.1:${PORT}'\nsecret: ''\n`;
+
+            fixedConfig = prefixConfig + fixedConfig;
 
             // 强制 Rule 模式
             if (fixedConfig.includes('mode:')) {
@@ -621,31 +671,62 @@ const Dashboard = () => {
                                             ⚡
                                         </span>
                                     </div>
-                                    <div style={styles.groupSelectWrapper}>
-                                        <select
-                                            value={group.now}
-                                            onChange={(e) => changeGroupNode(group.name, e.target.value)}
-                                            style={styles.groupSelect}
-                                        >
-                                            {group.all.map(node => {
-                                                let delayText = '';
-                                                const d = delays[node];
-                                                if (d === '...') delayText = ' ⏳';
-                                                else if (d === -1) delayText = ' ❌';
-                                                else if (typeof d === 'number') delayText = ` ${d}ms`;
 
-                                                return (
-                                                    <option key={node} value={node}>
-                                                        {node}{delayText}
-                                                    </option>
-                                                )
-                                            })}
-                                        </select>
-                                        <div style={isMain ? styles.mainSelectedNodeTag : styles.selectedNodeTag}>
-                                            {group.now}
-                                            {delays[group.now] && typeof delays[group.now] === 'number' && <span style={{ color: '#42e695', marginLeft: 8 }}>{delays[group.now]}ms</span>}
-                                            <span style={{ float: 'right', opacity: 0.5 }}>▼</span>
+                                    <div style={styles.groupSelectWrapper}>
+                                        {/* 🟢 自定义下拉触发器 */}
+                                        <div
+                                            className="custom-dropdown-trigger"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setActiveDropdown(activeDropdown === group.name ? null : group.name);
+                                            }}
+                                            style={isMain ? styles.mainSelectedNodeTag : styles.selectedNodeTag}
+                                        >
+                                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '20px' }}>
+                                                {renderNodeName(group.now)}
+                                            </div>
+                                            {delays[group.now] && typeof delays[group.now] === 'number' && <span style={{ color: isMain ? '#333' : '#42e695', position: 'absolute', right: 25, top: isMain ? 10 : 8 }}>{delays[group.now]}ms</span>}
+                                            <span style={{ position: 'absolute', right: 10, top: isMain ? 10 : 8, opacity: 0.5, fontSize: '10px' }}>▼</span>
                                         </div>
+
+                                        {/* 🟢 自定义下拉列表 */}
+                                        {activeDropdown === group.name && (
+                                            <div className="custom-dropdown-list" style={styles.dropdownList}>
+                                                {group.all.map(node => {
+                                                    let delayText = null;
+                                                    const d = delays[node];
+                                                    if (d === '...') delayText = <span style={{ color: '#aaa' }}>⏳</span>;
+                                                    else if (d === -1) delayText = <span style={{ color: '#ff4d4f' }}>❌</span>;
+                                                    else if (typeof d === 'number') delayText = <span style={{ color: '#42e695' }}>{d}ms</span>;
+
+                                                    const isSelected = group.now === node;
+                                                    return (
+                                                        <div
+                                                            key={node}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                changeGroupNode(group.name, node);
+                                                                setActiveDropdown(null);
+                                                            }}
+                                                            style={{
+                                                                ...styles.dropdownItem,
+                                                                background: isSelected ? 'rgba(122, 162, 247, 0.2)' : undefined,
+                                                                color: isSelected ? '#7aa2f7' : '#ccc'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = isSelected ? 'rgba(122, 162, 247, 0.3)' : '#333'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'rgba(122, 162, 247, 0.2)' : 'transparent'}
+                                                        >
+                                                            <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '10px' }}>
+                                                                {renderNodeName(node)}
+                                                            </div>
+                                                            <div style={{ fontSize: '12px', minWidth: '40px', textAlign: 'right' }}>
+                                                                {delayText}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -778,10 +859,40 @@ const styles: { [key: string]: React.CSSProperties } = {
     mainGroupCard: { background: 'linear-gradient(145deg, #2b3040, #252526)', borderRadius: '10px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '12px', border: '2px solid #7aa2f7', gridColumn: 'span 2' }, // 占据两列
     mainGroupName: { fontSize: '18px', fontWeight: 'bold', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' },
     mainTag: { fontSize: '10px', background: '#ff4d4f', padding: '2px 6px', borderRadius: '4px' },
-    mainSelectedNodeTag: { background: '#7aa2f7', color: '#1e1e1e', padding: '10px 15px', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold', textAlign: 'left', cursor: 'pointer', boxShadow: '0 4px 10px rgba(122, 162, 247, 0.2)' },
+    mainSelectedNodeTag: { background: '#7aa2f7', color: '#1e1e1e', padding: '10px 15px', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold', textAlign: 'left', cursor: 'pointer', boxShadow: '0 4px 10px rgba(122, 162, 247, 0.2)', position: 'relative' },
 
     groupSelectWrapper: { position: 'relative' },
-    groupSelect: { width: '100%', height: '100%', opacity: 0, position: 'absolute', top: 0, left: 0, cursor: 'pointer' },
+    // groupSelect: { width: '100%', height: '100%', opacity: 0, position: 'absolute', top: 0, left: 0, cursor: 'pointer' }, // 移除原生 select 样式
+
+    // 🟢 自定义下拉菜单样式
+    dropdownList: {
+        position: 'absolute',
+        top: '105%',
+        left: 0,
+        width: '100%',
+        maxHeight: '300px',
+        overflowY: 'auto',
+        background: '#252526',
+        border: '1px solid #444',
+        borderRadius: '6px',
+        zIndex: 1000,
+        boxShadow: '0 5px 15px rgba(0,0,0,0.5)',
+        display: 'flex',
+        flexDirection: 'column'
+    } as any,
+    dropdownItem: {
+        padding: '8px 12px',
+        cursor: 'pointer',
+        color: '#ccc',
+        fontSize: '13px',
+        borderBottom: '1px solid #333',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+    },
+    dropdownItemHover: {
+        background: '#333'
+    },
 
     // 日志窗口
     logOverlay: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '90%', maxWidth: '900px', height: '700px', maxHeight: '90vh', background: '#1e1e1e', border: '1px solid #444', borderRadius: '8px', boxShadow: '0 0 50px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', zIndex: 10000, WebkitAppRegion: 'no-drag' } as any,

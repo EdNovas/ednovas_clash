@@ -98,11 +98,15 @@ const initGeoFiles = (userDataPath: string) => {
 
 // 🟢 同步设置系统代理 (保证退出时能立即执行)
 const setSystemProxySync = (enable: boolean) => {
+    // 🟢 避免端口冲突，使用 22222 端口
+    const PROXY_PORT = 22222;
+    const PROXY_SERVER = `127.0.0.1:${PROXY_PORT}`;
+
     if (process.platform === 'win32') {
         try {
             if (enable) {
                 execSync(`reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /t REG_DWORD /d 1 /f`);
-                execSync(`reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyServer /t REG_SZ /d "127.0.0.1:7890" /f`);
+                execSync(`reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyServer /t REG_SZ /d "${PROXY_SERVER}" /f`);
             } else {
                 execSync(`reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /t REG_DWORD /d 0 /f`);
             }
@@ -115,9 +119,9 @@ const setSystemProxySync = (enable: boolean) => {
             services.forEach(service => {
                 try {
                     if (enable) {
-                        execSync(`networksetup -setwebproxy "${service}" 127.0.0.1 7890`);
-                        execSync(`networksetup -setsecurewebproxy "${service}" 127.0.0.1 7890`);
-                        execSync(`networksetup -setsocksfirewallproxy "${service}" 127.0.0.1 7890`);
+                        execSync(`networksetup -setwebproxy "${service}" 127.0.0.1 ${PROXY_PORT}`);
+                        execSync(`networksetup -setsecurewebproxy "${service}" 127.0.0.1 ${PROXY_PORT}`);
+                        execSync(`networksetup -setsocksfirewallproxy "${service}" 127.0.0.1 ${PROXY_PORT}`);
                     } else {
                         execSync(`networksetup -setwebproxystate "${service}" off`);
                         execSync(`networksetup -setsecurewebproxystate "${service}" off`);
@@ -137,11 +141,11 @@ const setSystemProxySync = (enable: boolean) => {
             if (enable) {
                 try { execSync('gsettings set org.gnome.system.proxy mode "manual"'); } catch (e) { }
                 try { execSync('gsettings set org.gnome.system.proxy.http host "127.0.0.1"'); } catch (e) { }
-                try { execSync('gsettings set org.gnome.system.proxy.http port 7890'); } catch (e) { }
+                try { execSync(`gsettings set org.gnome.system.proxy.http port ${PROXY_PORT}`); } catch (e) { }
                 try { execSync('gsettings set org.gnome.system.proxy.https host "127.0.0.1"'); } catch (e) { }
-                try { execSync('gsettings set org.gnome.system.proxy.https port 7890'); } catch (e) { }
+                try { execSync(`gsettings set org.gnome.system.proxy.https port ${PROXY_PORT}`); } catch (e) { }
                 try { execSync('gsettings set org.gnome.system.proxy.socks host "127.0.0.1"'); } catch (e) { }
-                try { execSync('gsettings set org.gnome.system.proxy.socks port 7890'); } catch (e) { }
+                try { execSync(`gsettings set org.gnome.system.proxy.socks port ${PROXY_PORT}`); } catch (e) { }
             } else {
                 try { execSync('gsettings set org.gnome.system.proxy mode "none"'); } catch (e) { }
             }

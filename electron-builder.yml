@@ -59,4 +59,5 @@ nsis:
   createStartMenuShortcut: true # 🟢 创建开始菜单快捷方式
   shortcutName: "EdNovasCloud" # 快捷方式名称
   runAfterFinish: true # 🟢 安装完成后显示运行选项
+  deleteAppDataOnUninstall: true # 🟢 卸载时删除用户配置数据 (AppData)
 
