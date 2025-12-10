@@ -48,11 +48,11 @@ sudo apt install ./EdNovas-Cloud-*-Linux-amd64.deb
 
 #### 关于 Linux 的 TUN 模式
 在 Linux 上启用 TUN 模式需要 **root 权限**。
-软件内置了自动提权机制：
-1. 点击开启 TUN 模式。
-2. 系统会弹出密码输入框（pkexec）。
-3. 输入密码授权后，软件会自动重启并进入 TUN 模式。
-
+目前请通过终端使用以下命令启动软件：
+```bash
+sudo ednovas-cloud --no-sandbox
+```
+*如果不使用 TUN 模式，普通用户直接点击图标启动即可使用系统代理模式。*
 *注意：重启后的软件运行在 root 权限下，配置（如 Token）会自动从用户环境迁移。*
 
 **⚠️ 常见问题：开启 TUN 模式后白屏或无法启动？**
