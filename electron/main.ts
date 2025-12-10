@@ -1,13 +1,49 @@
 // electron/main.ts
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage } from 'electron'
 import path from 'path'
 import { spawn, ChildProcess, execSync } from 'child_process'
 import fs from 'fs'
 
+// 🟢 错误日志记录
+const logError = (error: any) => {
+    try {
+        // 尝试将日志保存在安装目录 (exe 所在目录)
+        // 注意：如果安装在 C:\Program Files 且没有管理员权限，这里可能会写入失败。
+        // 但为了满足"保存在安装目录"，我们优先尝试这里。
+        const installDir = path.dirname(app.getPath('exe'));
+        const logPath = path.join(installDir, 'crash-error.log');
+
+        const message = error.stack || error.toString();
+        fs.appendFileSync(logPath, `${new Date().toISOString()} - ${message}\r\n`);
+    } catch (e) {
+        // 如果写入安装目录失败 (例如权限不足)，回退到 UserData
+        try {
+            const userDataPath = app.getPath('userData');
+            if (!fs.existsSync(userDataPath)) fs.mkdirSync(userDataPath, { recursive: true });
+            const fallbackLogPath = path.join(userDataPath, 'crash-error-fallback.log');
+            const message = error.stack || error.toString();
+            fs.appendFileSync(fallbackLogPath, `${new Date().toISOString()} - [Fallback] ${message}\r\n`);
+        } catch (ignored) { }
+    }
+}
+
+process.on('uncaughtException', (error) => {
+    logError(error);
+    // Optional: Show error dialog before exit
+    // dialog.showErrorBox('Application Error', error.message);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+    logError(reason);
+});
+
 let mainWindow: BrowserWindow | null = null
 let clashProcess: ChildProcess | null = null
+let tray: Tray | null = null
+let isQuitting = false
 
 // ... (getClashBinaryPath 函数保持不变) ...
 const getClashBinaryPath = () => {
@@ -103,22 +139,6 @@ const setSystemProxySync = (enable: boolean) => {
             } else {
                 try { execSync('gsettings set org.gnome.system.proxy mode "none"'); } catch (e) { }
             }
-
-            // 2. 🟢 Set Global Environment Variables (Root needed)
-            // This is critical for non-GNOME apps and terminal
-            // Note: This only takes effect for new shells/processes
-            /* 
-               We attempt to modify /etc/environment if we have permission.
-               However, modifying system files is risky and requires sudo. 
-               Since the user runs with sudo for TUN, this might work but is invasive.
-               
-               BETTER APPROACH for current session: 
-               We cannot set env vars for the PARENT shell from a child process.
-               So we rely on GNOME settings or the user manually exporting vars.
-               
-               But, we can try to use 'networksetup' equivalent if using KDE etc.
-               For now, we stick to GNOME as it's the target user case.
-            */
         } catch (e) {
             console.error('Linux Proxy Set Error:', e);
         }
@@ -177,31 +197,84 @@ const startClash = async (configPath: string) => {
     }
 }
 
+// 🟢 创建系统托盘
+const createTray = () => {
+    const iconPath = path.join(__dirname, process.env.VITE_DEV_SERVER_URL ? '../public/icon.png' : '../dist/icon.png');
+    const icon = nativeImage.createFromPath(iconPath);
+    tray = new Tray(icon.resize({ width: 16, height: 16 }));
+    tray.setToolTip('EdNovas Cloud');
+
+    const updateMenu = (sysProxyEnabled: boolean, mode: string) => {
+        const contextMenu = Menu.buildFromTemplate([
+            { label: '打开面板', click: () => mainWindow?.show() },
+            { type: 'separator' },
+            {
+                label: '系统代理',
+                type: 'checkbox',
+                checked: sysProxyEnabled,
+                click: () => mainWindow?.webContents.send('tray-toggle-proxy')
+            },
+            {
+                label: '代理模式',
+                submenu: [
+                    { label: '规则模式 (Rule)', type: 'radio', checked: mode === 'Rule', click: () => mainWindow?.webContents.send('tray-change-mode', 'Rule') },
+                    { label: '全局模式 (Global)', type: 'radio', checked: mode === 'Global', click: () => mainWindow?.webContents.send('tray-change-mode', 'Global') },
+                    { label: '直连模式 (Direct)', type: 'radio', checked: mode === 'Direct', click: () => mainWindow?.webContents.send('tray-change-mode', 'Direct') }
+                ]
+            },
+            { type: 'separator' },
+            { label: '彻底退出', click: () => { isQuitting = true; app.quit(); } }
+        ]);
+        tray?.setContextMenu(contextMenu);
+    };
+
+    // 初始菜单
+    updateMenu(false, 'Rule');
+
+    // 监听双击打开
+    tray.on('double-click', () => mainWindow?.show());
+
+    // 监听渲染进程状态更新，同步托盘菜单
+    ipcMain.on('sync-tray-state', (_event, { sysProxy, mode }) => {
+        updateMenu(sysProxy, mode);
+    });
+}
+
 const createWindow = () => {
     mainWindow = new BrowserWindow({
         width: 1100, height: 750,
         minWidth: 900, minHeight: 600,
         center: true,
-        title: 'EdNovas Cloud', // 🟢 设置标题
-        icon: path.join(__dirname, process.env.VITE_DEV_SERVER_URL ? '../public/ezv9d7ezv9d7ezv9.jpg' : '../dist/ezv9d7ezv9d7ezv9.jpg'), // 🟢 设置图标
-        titleBarStyle: 'hidden', // 🟢 隐藏原生标题栏背景
+        title: 'EdNovas Cloud',
+        icon: path.join(__dirname, process.env.VITE_DEV_SERVER_URL ? '../public/ezv9d7ezv9d7ezv9.jpg' : '../dist/ezv9d7ezv9d7ezv9.jpg'),
+        titleBarStyle: 'hidden',
         titleBarOverlay: {
-            color: '#1a1b1e', // 🟢 设置背景色与应用头部一致，实现"透明"效果
-            symbolColor: '#ffffff', // 🟢 设置控制按钮图标颜色
-            height: 45 // 🟢 高度
+            color: '#1a1b1e',
+            symbolColor: '#ffffff',
+            height: 45
         },
         webPreferences: { nodeIntegration: true, contextIsolation: false, webSecurity: false },
     })
-    mainWindow.setMenu(null); // 🟢 隐藏菜单栏
+    mainWindow.setMenu(null);
     if (process.env.VITE_DEV_SERVER_URL) {
         mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
     } else {
         mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
     }
+
+    // 🟢 拦截关闭事件，最小化到托盘
+    mainWindow.on('close', (event) => {
+        if (!isQuitting) {
+            event.preventDefault();
+            mainWindow?.hide();
+            return false;
+        }
+    });
 }
 
 app.whenReady().then(() => {
-    createWindow()
+    createWindow();
+    createTray();
 
     ipcMain.handle('start-clash-service', async (event, configContent) => {
         try {
@@ -246,6 +319,23 @@ app.whenReady().then(() => {
 })
 
 // 🟢 退出时强制清理 (防断网)
+// Add check-is-admin handler
+ipcMain.handle('check-is-admin', () => {
+    try {
+        execSync('net session', { stdio: 'ignore' });
+        return true;
+    } catch {
+        return false;
+    }
+});
+
+// Add relaunch-as-admin handler
+ipcMain.handle('relaunch-as-admin', () => {
+    const exe = app.getPath('exe');
+    spawn('powershell.exe', ['Start-Process', `"${exe}"`, '-Verb', 'RunAs'], { detached: true });
+    app.quit();
+});
+
 app.on('before-quit', () => {
     setSystemProxySync(false);
     if (clashProcess) clashProcess.kill();

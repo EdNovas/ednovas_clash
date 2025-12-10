@@ -12,7 +12,7 @@ files:
   - "dist-electron/**/*"
   - "package.json"
   - "!**/*.map"
-  - "!node_modules/**/*" # 🟢 彻底排除 node_modules (因为 main.js 已经打包，且前端依赖已在 dist 中)
+  # - "!node_modules/**/*" # 🟢 彻底排除 node_modules (潜在风险：如果 main.js 依赖未打包的模块将导致崩溃)
 # 关键配置：将 resources 目录打包到软件中
 extraResources:
   - from: "resources/"
@@ -20,7 +20,7 @@ extraResources:
 win:
   target: nsis
   icon: "public/icon.png" # 确保你有一个图标文件
-  requestedExecutionLevel: requireAdministrator #如果需要TUN模式，最好请求管理员权限
+  requestedExecutionLevel: asInvoker # 改为 asInvoker 避免每次启动都弹窗 (注意：这可能导致 TUN 模式或某些系统设置失败)
   artifactName: "EdNovas-Cloud-${version}-Windows-x64.${ext}"
 
 mac:
@@ -54,7 +54,7 @@ linux:
 nsis:
   oneClick: false # 🟢 关闭一键安装，允许用户点击下一步
   allowToChangeInstallationDirectory: true # 🟢 允许用户修改安装目录
-  perMachine: true # 🟢 建议默认安装到 Program Files (全机可用)，设为 false 则默认 AppData (仅当前用户)
+  perMachine: false # 🟢 改为 false (默认安装到 AppData)，配合 asInvoker 使用，无需权限也能写日志/自动更新
   createDesktopShortcut: true # 🟢 创建桌面快捷方式
   createStartMenuShortcut: true # 🟢 创建开始菜单快捷方式
   shortcutName: "EdNovas云" # 快捷方式名称

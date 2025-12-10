@@ -77,6 +77,16 @@ const Dashboard = () => {
             ipcRenderer.on('clash-log', (_event: any, message: any) => {
                 addLog(message.toString());
             });
+
+            // 🟢 监听托盘系统代理开关
+            ipcRenderer.on('tray-toggle-proxy', () => {
+                toggleSystemProxy(); // Toggle based on current state
+            });
+
+            // 🟢 监听托盘模式切换
+            ipcRenderer.on('tray-change-mode', (_event: any, newMode: ClashMode) => {
+                changeMode(newMode);
+            });
         }
 
         // 3. 自动启动
@@ -95,7 +105,11 @@ const Dashboard = () => {
 
         return () => {
             if (wsRef.current) wsRef.current.close();
-            if (ipcRenderer) ipcRenderer.removeAllListeners('clash-log');
+            if (ipcRenderer) {
+                ipcRenderer.removeAllListeners('clash-log');
+                ipcRenderer.removeAllListeners('tray-toggle-proxy');
+                ipcRenderer.removeAllListeners('tray-change-mode');
+            }
         };
     }, []);
 
@@ -110,6 +124,13 @@ const Dashboard = () => {
         }
         return () => clearInterval(interval);
     }, [hasValidSubscription]);
+
+    // 🟢 同步托盘状态
+    useEffect(() => {
+        if (ipcRenderer) {
+            ipcRenderer.send('sync-tray-state', { sysProxy, mode });
+        }
+    }, [sysProxy, mode]);
 
 
 
@@ -309,8 +330,19 @@ const Dashboard = () => {
         } catch (e) { }
     };
 
-    const toggleTunMode = () => {
-        if (coreStatus === 'running' && !confirm('切换 TUN 需要重启，继续？')) return;
+    const toggleTunMode = async () => {
+        // 🟢 检查管理员权限 (仅当尝试开启 TUN 时)
+        if (!tunMode && ipcRenderer) {
+            const isAdmin = await ipcRenderer.invoke('check-is-admin');
+            if (!isAdmin) {
+                if (confirm('启用 TUN 模式需要管理员权限。\n\n是否立即以管理员身份重启软件？')) {
+                    await ipcRenderer.invoke('relaunch-as-admin');
+                }
+                return; // 无论是否确认重启，都先中断当前操作
+            }
+        }
+
+        if (coreStatus === 'running' && !confirm('切换 TUN 需要重启内核，继续？')) return;
         setTunMode(!tunMode);
         if (coreStatus === 'running') setTimeout(startClashCore, 500);
     };
