@@ -115,6 +115,34 @@ jobs:
             dist_electron/*.dmg
             dist_electron/*.AppImage
             dist_electron/*.deb
+          body: |
+            ## 📥 下载地址 / Downloads
+
+            > **注意 / Note**: 请根据您的系统架构选择对应的安装包。如有问题，请尝试卸载旧版本后重装。
+
+            ### 🪟 Windows (Win 10/11)
+            | 版本 | 架构 | 文件名 |
+            | :--- | :--- | :--- |
+            | **安装包 (推荐)** | x64 (常见) | [下载 (exe)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ github.ref_name }}-Windows-x64.exe) |
+
+            ### 🍎 macOS
+            | 芯片类型 | 格式 | 文件名 |
+            | :--- | :--- | :--- |
+            | **Apple Silicon (M1/M2/M3)** | .dmg | [下载 (arm64)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ github.ref_name }}-macOS-arm64.dmg) |
+            | **Intel 芯片** | .dmg | [下载 (x64)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ github.ref_name }}-macOS-x64.dmg) |
+
+            ### 🐧 Linux
+            | 发行版 | 格式 | 架构 | 文件名 |
+            | :--- | :--- | :--- | :--- |
+            | **Ubuntu/Debian** | .deb | x64 | [下载 (deb)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ github.ref_name }}-Linux-x64.deb) |
+            | **Ubuntu/Debian** | .deb | ARM64 | [下载 (deb)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ github.ref_name }}-Linux-arm64.deb) |
+            | **通用 (AppImage)** | .AppImage | x64 | [下载 (AppImage)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ github.ref_name }}-Linux-x64.AppImage) |
+            | **通用 (AppImage)** | .AppImage | ARM64 | [下载 (AppImage)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ github.ref_name }}-Linux-arm64.AppImage) |
+
+            ---
+
+            ### 🛠 变更日志 / Changelog
+
           generate_release_notes: true
           draft: false
           prerelease: false
