@@ -10,15 +10,17 @@
 | :--- | :--- | :--- | :--- |
 | **Windows** | x64 | `.exe` | Win 10/11 推荐 |
 | **macOS** | Intel / Apple Silicon | `.dmg` | 通用支持 |
-| **Linux** | x64 / ARM64 | `.deb` / `.AppImage` | 完美适配 Ubuntu 22/24 |
+| **Linux** | x64 / ARM64 | `.deb` | 完美适配 Ubuntu 22/24 |
 
 ## ⭐ 功能特点
 
 - **🚀 极速内核**: 内置高性能 [Mihomo](https://github.com/MetaCubeX/mihomo) (Clash Meta) 内核，支持最新协议。
 - **🎨 现代化 UI**: 精心设计的深色主题，支持实时流量/速度监控。
 - **🌍 跨平台**: 一套代码，同时支持 Windows, macOS 和 Linux (包括 ARM 设备)。
-- **🔌 TUN 模式**: 支持虚拟网卡模式，接管系统所有流量（Linux 需 root 权限）。
+- **🔌 TUN 模式**: 支持虚拟网卡模式，接管系统所有流量（Linux 支持自动提权重启）。
 - **🐧 Linux 优化**: 针对 Linux 桌面环境进行了特别适配（图标、系统代理、自动启动）。
+- **🇺🇸 完美显示**: 内置 Twemoji 支持，完美渲染节点名称中的国旗图标，拒绝显示为字母。
+- **🛡️ 智能避让**: 采用 22222 端口及动态 API 端口，完美解决与其他代理软件的冲突。
 - **📥 自动更新**: 配合 GitHub Actions 实现全自动构建发布。
 
 ## 📦 下载安装
@@ -35,7 +37,7 @@
 
 ### 🐧 Linux (Ubuntu/Debian)
 
-**推荐使用 DEB 包安装**：
+仅支持 **DEB 包安装**：
 
 ```bash
 # 安装下载的 deb 包
@@ -44,18 +46,14 @@ sudo apt install ./EdNovas-Cloud-*-Linux-amd64.deb
 # 如果安装后图标未显示，请尝试注销并重新登录
 ```
 
-**或者使用 AppImage (免安装)**：
-```bash
-chmod +x EdNovas-Cloud-*-Linux-x64.AppImage
-./EdNovas-Cloud-*-Linux-x64.AppImage
-```
-
 #### 关于 Linux 的 TUN 模式
-在 Linux 上启用 TUN 模式需要 **root 权限**。如果您必须使用 TUN 模式，请通过终端启动：
-```bash
-sudo ednovas-cloud --no-sandbox
-```
-*如果不使用 TUN 模式，普通系统代理只需直接在应用菜单启动即可。*
+在 Linux 上启用 TUN 模式需要 **root 权限**。
+软件内置了自动提权机制：
+1. 点击开启 TUN 模式。
+2. 系统会弹出密码输入框（pkexec）。
+3. 输入密码授权后，软件会自动重启并进入 TUN 模式。
+
+*注意：重启后的软件运行在 root 权限下，配置（如 Token）会自动从用户环境迁移。*
 
 ## 🔨 本地开发
 
@@ -75,10 +73,10 @@ npm install
 # - macOS/Linux: resources/bin/EdNovas-Core (记得 chmod +x)
 
 # 4. 启动开发模式
-npm run electron:dev
+npm run dev
 
 # 5. 打包构建
-npm run electron:build
+npm run dist
 ```
 
 ## 📜 许可证
