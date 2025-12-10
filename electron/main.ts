@@ -115,15 +115,18 @@ const startClash = async (configPath: string) => {
     }
 
     // 2. 🟢 Force kill any external ghost processes to free port 9090
+    // Try multiple methods to ensure it's dead
     try {
         if (process.platform === 'win32') {
             execSync('taskkill /f /im EdNovas-Core.exe', { stdio: 'ignore' });
         } else {
-            execSync('pkill -f EdNovas-Core', { stdio: 'ignore' });
+            // Linux/Mac: Try pkill, killall, and fuser on the port
+            try { execSync('pkill -9 -f EdNovas-Core', { stdio: 'ignore' }); } catch { }
+            try { execSync('killall -9 EdNovas-Core', { stdio: 'ignore' }); } catch { }
+            // Try to kill whatever is holding port 9090
+            try { execSync('fuser -k 9090/tcp', { stdio: 'ignore' }); } catch { }
         }
-    } catch (e) {
-        // Ignore error if no process found
-    }
+    } catch (e) { }
 
     try {
         const binaryPath = getClashBinaryPath();
@@ -135,8 +138,8 @@ const startClash = async (configPath: string) => {
 
         const configDir = path.dirname(configPath);
 
-        // 4. 🟢 Wait for port release (Port 9090 reused frequently)
-        await new Promise(r => setTimeout(r, 1500));
+        // 4. 🟢 Wait for port release (Increased delay)
+        await new Promise(r => setTimeout(r, 2000));
 
         // 5. Spawn new process
         clashProcess = spawn(binaryPath, ['-d', configDir, '-f', configPath]);
