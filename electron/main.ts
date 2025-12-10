@@ -231,14 +231,24 @@ const createTray = () => {
     // 初始菜单
     updateMenu(false, 'Rule');
 
-    // 监听双击打开
-    tray.on('double-click', () => mainWindow?.show());
+    // 监听单击打开
+    tray.on('click', () => mainWindow?.show());
 
     // 监听渲染进程状态更新，同步托盘菜单
     ipcMain.on('sync-tray-state', (_event, { sysProxy, mode }) => {
         updateMenu(sysProxy, mode);
     });
 }
+
+// ... (createWindow and other parts remain same) ...
+
+// Add relaunch-as-admin handler
+ipcMain.handle('relaunch-as-admin', () => {
+    const exe = app.getPath('exe');
+    spawn('powershell.exe', ['Start-Process', `"${exe}"`, '-Verb', 'RunAs'], { detached: true });
+    isQuitting = true; // 🟢 必须设为 true，否则会被 close 事件拦截导致无法退出重启
+    app.quit();
+});
 
 const createWindow = () => {
     mainWindow = new BrowserWindow({
@@ -329,12 +339,7 @@ ipcMain.handle('check-is-admin', () => {
     }
 });
 
-// Add relaunch-as-admin handler
-ipcMain.handle('relaunch-as-admin', () => {
-    const exe = app.getPath('exe');
-    spawn('powershell.exe', ['Start-Process', `"${exe}"`, '-Verb', 'RunAs'], { detached: true });
-    app.quit();
-});
+
 
 app.on('before-quit', () => {
     setSystemProxySync(false);
