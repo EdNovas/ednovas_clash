@@ -282,40 +282,59 @@ const createWindow = () => {
 ipcMain.handle('relaunch-as-admin', async () => {
     return new Promise((resolve) => {
         const exe = app.getPath('exe');
-        // 🟢 使用 exec 配合 PowerShell Start-Process，并严格处理引号以支持带空格的路径
-        // 注意：PowerShell 中字符串可以用单引号
-        const cmd = `Start-Process -FilePath '${exe}' -Verb RunAs`;
-        console.log('Relaunching:', cmd);
 
-        try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Relaunch] Executing: powershell -Command "${cmd}"\n`); } catch (e) { }
+        if (process.platform === 'win32') {
+            // Windows: 使用 PowerShell Start-Process -Verb RunAs
+            const cmd = `Start-Process -FilePath '${exe}' -Verb RunAs`;
+            console.log('Relaunching Win:', cmd);
+            const { exec } = require('child_process');
+            exec(`powershell -Command "${cmd}"`, (error: any, stdout: any, stderr: any) => {
+                if (error) {
+                    const msg = error.message || stderr;
+                    resolve({ success: false, error: msg });
+                } else {
+                    isQuitting = true;
+                    app.exit(0);
+                    resolve({ success: true });
+                }
+            });
+        } else if (process.platform === 'linux') {
+            // Linux: 尝试使用 pkexec
+            // 注意: AppImage 环境下 exe 路径可能需要特殊处理，这里暂按标准逻辑
+            const cmd = `pkexec "${exe}"`;
+            // 如果是 AppImage, process.env.APPIMAGE 包含原始路径
+            const targetExe = process.env.APPIMAGE || exe;
+            const linuxCmd = `pkexec "${targetExe}" --no-sandbox`; // 添加 --no-sandbox 防止 root 运行 chrome 报错
 
-        // 使用 exec 执行命令，因为这能更好地处理引号，并且提供回调
-        const { exec } = require('child_process');
-        exec(`powershell -Command "${cmd}"`, (error: any, stdout: any, stderr: any) => {
-            if (error) {
-                // 用户拒绝 UAC 或其他错误
-                const msg = error.message || stderr;
-                console.error('Relaunch failed:', msg);
-                try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Relaunch Error] ${msg}\n`); } catch (e) { }
-                resolve({ success: false, error: msg });
-            } else {
-                // 启动成功，退出当前实例
-                try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Relaunch Success] Quitting app.\n`); } catch (e) { }
-                isQuitting = true;
-                app.exit(0);
-                resolve({ success: true });
-            }
-        });
+            console.log('Relaunching Linux:', linuxCmd);
+            const { exec } = require('child_process');
+            exec(linuxCmd, (error: any) => {
+                if (error) {
+                    resolve({ success: false, error: error.message });
+                } else {
+                    isQuitting = true;
+                    app.exit(0);
+                    resolve({ success: true });
+                }
+            });
+        } else {
+            resolve({ success: false, error: 'Unsupported platform for auto-relaunch' });
+        }
     });
 });
 
 // Add check-is-admin handler
 ipcMain.handle('check-is-admin', () => {
-    try {
-        execSync('net session', { stdio: 'ignore' });
-        return true;
-    } catch {
-        return false;
+    if (process.platform === 'win32') {
+        try {
+            execSync('net session', { stdio: 'ignore' });
+            return true;
+        } catch {
+            return false;
+        }
+    } else {
+        // Unix/Linux/Mac: 检查 uid 是否为 0 (root)
+        return process.getuid ? process.getuid() === 0 : false;
     }
 });
 
