@@ -1,5 +1,5 @@
 appId: com.ednovas.cloud
-productName: "EdNovas Cloud"
+productName: "EdNovasCloud"
 compression: maximum
 # 🟢 仅保留中英文语言包，移除其他几十种语言
 electronLanguages:
@@ -57,5 +57,5 @@ nsis:
   perMachine: false # 🟢 改为 false (默认安装到 AppData)，配合 asInvoker 使用，无需权限也能写日志/自动更新
   createDesktopShortcut: true # 🟢 创建桌面快捷方式
   createStartMenuShortcut: true # 🟢 创建开始菜单快捷方式
-  shortcutName: "EdNovas云" # 快捷方式名称
+  shortcutName: "EdNovasCloud" # 快捷方式名称
   deleteAppDataOnUninstall: true # 🟢 卸载时清除用户数据 (配置、缓存等)

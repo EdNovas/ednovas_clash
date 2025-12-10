@@ -6,6 +6,12 @@ import path from 'path'
 import { spawn, ChildProcess, execSync } from 'child_process'
 import fs from 'fs'
 
+// 🟢 极早期的启动日志，用于调试"起不来"的问题
+try {
+    const logFile = path.join(app.getPath('userData'), 'boot_trace.log');
+    fs.appendFileSync(logFile, `${new Date().toISOString()} - App Starting... Exec: ${process.execPath}\n`);
+} catch (e) { }
+
 // 🟢 错误日志记录
 const logError = (error: any) => {
     try {
@@ -245,8 +251,12 @@ const createTray = () => {
 // Add relaunch-as-admin handler
 ipcMain.handle('relaunch-as-admin', () => {
     const exe = app.getPath('exe');
-    spawn('powershell.exe', ['Start-Process', `"${exe}"`, '-Verb', 'RunAs'], { detached: true });
-    isQuitting = true; // 🟢 必须设为 true，否则会被 close 事件拦截导致无法退出重启
+    // 使用 Start-Process 并传递参数，确保路径被正确引用
+    // 关键修复：PowerShell 中路径如果有空格，需要外层加引号
+    const cmd = `Start-Process -FilePath "${exe}" -Verb RunAs`;
+    console.log('Relaunching:', cmd);
+    spawn('powershell.exe', ['-Command', cmd], { detached: true, stdio: 'ignore' });
+    isQuitting = true;
     app.quit();
 });
 
