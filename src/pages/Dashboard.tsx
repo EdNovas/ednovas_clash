@@ -59,6 +59,16 @@ const Dashboard = () => {
     // 开机自启状态
     const [autoStart, setAutoStart] = useState(false);
 
+    // 🟢 缓存代理组结构 (用于秒开)
+    useEffect(() => {
+        try {
+            const cachedGroups = localStorage.getItem('cachedProxyGroups');
+            if (cachedGroups) {
+                setProxyGroups(JSON.parse(cachedGroups));
+            }
+        } catch (e) { }
+    }, []);
+
     const [delays, setDelays] = useState<{ [key: string]: number | string }>({});
     const [testingGroups, setTestingGroups] = useState<Set<string>>(new Set());
 
@@ -323,10 +333,12 @@ const Dashboard = () => {
                 if (res.success) {
                     setCoreStatus('running');
                     addLog('✅ 内核启动成功');
+                    setCoreStatus('running');
+                    addLog('✅ 内核启动成功');
                     setTimeout(() => {
                         // toggleSystemProxy(true); // 🟢 用户要求不再自动开启系统代理
                         initClashConnection(currentOrder);
-                    }, 1000);
+                    }, 100); // 🟢 优化：减少等待时间 (1000ms -> 100ms)
                 }
             }
         } catch (e: any) {
@@ -347,10 +359,10 @@ const Dashboard = () => {
             } catch (e) {
                 retries++;
                 // 每2秒提示一次
-                if (retries % 2 === 0) {
-                    addLog(`⏳ 等待内核初始化... (${retries}s)`);
+                if (retries % 5 === 0) { // 减少日志刷屏频率
+                    addLog(`⏳ 等待内核初始化... (${retries * 0.2}s)`);
                 }
-                await new Promise(r => setTimeout(r, 1000));
+                await new Promise(r => setTimeout(r, 200)); // 🟢 优化：提高检测频率 (1000ms -> 200ms)
             }
         }
 
@@ -397,13 +409,14 @@ const Dashboard = () => {
                     // 如果只有A在列表，A在前
                     if (idxA !== -1) return -1;
                     // 如果只有B在列表，B在前
-                    if (idxB !== -1) return 1;
                     // 都不在列表，保持原样
                     return 0;
                 });
             }
 
             setProxyGroups(groups);
+            // 🟢 缓存最新的组结构
+            localStorage.setItem('cachedProxyGroups', JSON.stringify(groups));
         } catch (e) { console.error(e); }
     };
 
