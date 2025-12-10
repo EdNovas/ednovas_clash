@@ -1,31 +1,61 @@
-# EdNovas 云客户端
+# EdNovas Cloud (EdNovas云)
 
-![Sample](https://raw.githubusercontent.com/EdNovas/ednovas_clash/refs/heads/main/photo_2025-12-09_13-55-24.jpg) 
+![Sample](https://raw.githubusercontent.com/EdNovas/ednovas_clash/refs/heads/main/photo_2025-12-09_13-55-24.jpg)
 
-一个基于 Electron + React + Clash Meta 内核的现代化代理客户端，专为 Windows 用户设计。
+一个基于 Electron + React + Mihomo (Clash Meta) 内核的现代化跨平台代理客户端。
 
-## ✨ 功能特点
+## ✨ 支持平台
 
-- **🚀 极速内核**: 内置高性能 EdNovas-Core (Clash Meta) 内核。
-- **🎨 现代化 UI**: 精心设计的暗色主题界面，支持动态流量显示。
-- **🛡️ 智能分流**: 自动识别国内外流量，支持规则模式、全局模式和直连模式。
-- **🔌 TUN 模式**: 支持虚拟网卡 (TUN) 模式，接管系统所有流量（包括不支持代理的软件）。
-- **📥 自动配置**: 一键登录/订阅，自动下载配置与规则。
-- **🧩 智能依赖**: 内置 GeoIP 和 GeoSite 数据库，首次启动自动部署，无需漫长下载。
-- **🔄 自动更新**: 支持 GitHub Actions 自动构建与发布。
+| 平台 | 架构 | 格式 | 备注 |
+| :--- | :--- | :--- | :--- |
+| **Windows** | x64 | `.exe` | Win 10/11 推荐 |
+| **macOS** | Intel / Apple Silicon | `.dmg` | 通用支持 |
+| **Linux** | x64 / ARM64 | `.deb` / `.AppImage` | 完美适配 Ubuntu 22/24 |
 
-## 🛠️ 技术栈
+## ⭐ 功能特点
 
-- **Frontend**: React, TypeScript, Vite
-- **Desktop**: Electron
-- **Core**: Clash Meta (EdNovas-Core)
-- **Styling**: Standard CSS (Grid/Flexbox)
+- **🚀 极速内核**: 内置高性能 [Mihomo](https://github.com/MetaCubeX/mihomo) (Clash Meta) 内核，支持最新协议。
+- **🎨 现代化 UI**: 精心设计的深色主题，支持实时流量/速度监控。
+- **🌍 跨平台**: 一套代码，同时支持 Windows, macOS 和 Linux (包括 ARM 设备)。
+- **🔌 TUN 模式**: 支持虚拟网卡模式，接管系统所有流量（Linux 需 root 权限）。
+- **🐧 Linux 优化**: 针对 Linux 桌面环境进行了特别适配（图标、系统代理、自动启动）。
+- **📥 自动更新**: 配合 GitHub Actions 实现全自动构建发布。
 
-## 📦 如何使用
+## 📦 下载安装
 
-1.  从 [Releases](../../releases) 页面下载最新的安装包 (`.exe`)。
-2.  安装并运行程序。
-3.  输入您的订阅账号密码登录即可使用。
+请前往 [Releases](../../releases) 页面下载最新版本。
+
+### 🪟 Windows
+直接下载 `.exe` 安装程序运行即可。
+
+### 🍎 macOS
+下载 `.dmg` 文件，将 `EdNovas Cloud` 拖入 `Applications` 文件夹。
+> 如提示“文件已损坏”或“无法验证开发者”，请在终端运行：
+> `sudo xattr -rd com.apple.quarantine /Applications/EdNovas\ Cloud.app`
+
+### 🐧 Linux (Ubuntu/Debian)
+
+**推荐使用 DEB 包安装**：
+
+```bash
+# 安装下载的 deb 包
+sudo apt install ./EdNovas-Cloud-*-Linux-amd64.deb
+
+# 如果安装后图标未显示，请尝试注销并重新登录
+```
+
+**或者使用 AppImage (免安装)**：
+```bash
+chmod +x EdNovas-Cloud-*-Linux-x64.AppImage
+./EdNovas-Cloud-*-Linux-x64.AppImage
+```
+
+#### 关于 Linux 的 TUN 模式
+在 Linux 上启用 TUN 模式需要 **root 权限**。如果您必须使用 TUN 模式，请通过终端启动：
+```bash
+sudo ednovas-cloud --no-sandbox
+```
+*如果不使用 TUN 模式，普通系统代理只需直接在应用菜单启动即可。*
 
 ## 🔨 本地开发
 
@@ -39,11 +69,10 @@ cd my-airport-client
 # 2. 安装依赖
 npm install
 
-# 3. 放置资源文件
-# 请确保 resources/ 目录下包含以下文件：
-# - resources/bin/EdNovas-Core.exe
-# - resources/geoip.metadb
-# - resources/geosite.dat
+# 3. 准备内核文件
+# 请根据您的系统下载对应的 mihomo 内核，重命名并放入 resources/bin/ 目录：
+# - Windows: resources/bin/EdNovas-Core.exe
+# - macOS/Linux: resources/bin/EdNovas-Core (记得 chmod +x)
 
 # 4. 启动开发模式
 npm run electron:dev
