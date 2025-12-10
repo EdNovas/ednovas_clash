@@ -416,6 +416,11 @@ if (!gotTheLock) {
         ipcMain.handle('get-app-version', () => {
             return app.getVersion();
         });
+
+        // 🟢 获取平台信息
+        ipcMain.handle('get-platform', () => {
+            return process.platform;
+        });
     })
 }
 

@@ -63,6 +63,13 @@ const Dashboard = () => {
             if (!ipcRenderer) return;
 
             try {
+                // 🟢 获取基本环境信息
+                const currentPlatform = await ipcRenderer.invoke('get-platform');
+                setPlatform(currentPlatform);
+
+                const currentIsAdmin = await ipcRenderer.invoke('check-is-admin');
+                setIsAdmin(currentIsAdmin);
+
                 // 1. 检查命令行参数 (Linux Root 重启)
                 const args = await ipcRenderer.invoke('get-launch-args') as string[];
                 const hasTunArg = args && args.includes('--tun-mode');
@@ -71,8 +78,7 @@ const Dashboard = () => {
                 const pendingStorage = localStorage.getItem('pendingTunMode') === 'true';
 
                 if (hasTunArg || pendingStorage) {
-                    const isAdmin = await ipcRenderer.invoke('check-is-admin');
-                    if (isAdmin) {
+                    if (currentIsAdmin) {
                         addLog('🛡️ 检测到重启，自动开启 TUN 模式...');
                         setTunMode(true);
                         // 等待一下让组件状态更新，然后启动核心
@@ -115,6 +121,10 @@ const Dashboard = () => {
 
     // 🟢 下拉菜单状态
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
+    // 🟢 系统环境状态
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [platform, setPlatform] = useState('');
 
     // 🟢 点击外部关闭下拉菜单
     useEffect(() => {
@@ -643,8 +653,20 @@ const Dashboard = () => {
                 {/* 右侧控制区 */}
                 <div style={styles.controls}>
                     <div style={styles.buttonGroup}>
-                        <div onClick={toggleTunMode} style={{ ...styles.tagBtn, background: tunMode ? '#e6a23c' : '#333', WebkitAppRegion: 'no-drag' } as any}>
-                            TUN 模式
+                        {/* 🟢 Linux 非 Root 用户禁用 TUN 按钮 */}
+                        <div
+                            onClick={(!platform || platform !== 'linux' || isAdmin) ? toggleTunMode : undefined}
+                            style={{
+                                ...styles.tagBtn,
+                                background: tunMode ? '#e6a23c' : '#333',
+                                WebkitAppRegion: 'no-drag',
+                                opacity: (platform === 'linux' && !isAdmin) ? 0.3 : 1,
+                                cursor: (platform === 'linux' && !isAdmin) ? 'not-allowed' : 'pointer',
+                                pointerEvents: (platform === 'linux' && !isAdmin) ? 'none' : 'auto'
+                            } as any}
+                            title={platform === 'linux' && !isAdmin ? '请使用 sudo 启动以启用 TUN' : ''}
+                        >
+                            {(platform === 'linux' && !isAdmin) ? '需 Root 权限' : 'TUN 模式'}
                         </div>
 
                         <div onClick={() => toggleSystemProxy()} style={{ ...styles.proxyBtn, background: sysProxy ? '#ff4d4f' : '#42e695', WebkitAppRegion: 'no-drag' } as any}>
