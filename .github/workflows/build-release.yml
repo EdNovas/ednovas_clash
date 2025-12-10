@@ -77,6 +77,7 @@ jobs:
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "Setting version to $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
           npm version $VERSION --no-git-tag-version
 
       - name: Setup Clash Core (Automatic Download)
@@ -123,21 +124,21 @@ jobs:
             ### 🪟 Windows (Win 10/11)
             | 版本 | 架构 | 文件名 |
             | :--- | :--- | :--- |
-            | **安装包 (推荐)** | x64 (常见) | [下载 (exe)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ github.ref_name }}-Windows-x64.exe) |
+            | **安装包 (推荐)** | x64 (常见) | [下载 (exe)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ env.VERSION }}-Windows-x64.exe) |
 
             ### 🍎 macOS
             | 芯片类型 | 格式 | 文件名 |
             | :--- | :--- | :--- |
-            | **Apple Silicon (M1/M2/M3)** | .dmg | [下载 (arm64)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ github.ref_name }}-macOS-arm64.dmg) |
-            | **Intel 芯片** | .dmg | [下载 (x64)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ github.ref_name }}-macOS-x64.dmg) |
+            | **Apple Silicon (M1/M2/M3)** | .dmg | [下载 (arm64)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ env.VERSION }}-macOS-arm64.dmg) |
+            | **Intel 芯片** | .dmg | [下载 (x64)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ env.VERSION }}-macOS-x64.dmg) |
 
             ### 🐧 Linux
             | 发行版 | 格式 | 架构 | 文件名 |
             | :--- | :--- | :--- | :--- |
-            | **Ubuntu/Debian** | .deb | x64 | [下载 (deb)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ github.ref_name }}-Linux-x64.deb) |
-            | **Ubuntu/Debian** | .deb | ARM64 | [下载 (deb)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ github.ref_name }}-Linux-arm64.deb) |
-            | **通用 (AppImage)** | .AppImage | x64 | [下载 (AppImage)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ github.ref_name }}-Linux-x64.AppImage) |
-            | **通用 (AppImage)** | .AppImage | ARM64 | [下载 (AppImage)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ github.ref_name }}-Linux-arm64.AppImage) |
+            | **Ubuntu/Debian** | .deb | x64 | [下载 (deb)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ env.VERSION }}-Linux-x64.deb) |
+            | **Ubuntu/Debian** | .deb | ARM64 | [下载 (deb)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ env.VERSION }}-Linux-arm64.deb) |
+            | **通用 (AppImage)** | .AppImage | x64 | [下载 (AppImage)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ env.VERSION }}-Linux-x64.AppImage) |
+            | **通用 (AppImage)** | .AppImage | ARM64 | [下载 (AppImage)](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ env.VERSION }}-Linux-arm64.AppImage) |
 
             ---
 
