@@ -28,6 +28,12 @@ mac:
   icon: "public/icon.png"
   artifactName: "EdNovas-Cloud-${version}-macOS-${arch}.${ext}"
 
+  artifactName: "EdNovas-Cloud-${version}-Linux-${arch}.${ext}"
+
+deb:
+  priority: optional
+  compression: xz
+
 linux:
   target:
     - AppImage
@@ -38,9 +44,6 @@ linux:
   synopsis: "EdNovas Cloud Proxy Client"
   description: "Official desktop client for EdNovas Cloud services."
   artifactName: "EdNovas-Cloud-${version}-Linux-${arch}.${ext}"
-  deb:
-    priority: optional
-    compression: xz
   desktop:
     entry:
       StartupWMClass: ednovas-cloud
