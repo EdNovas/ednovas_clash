@@ -59,6 +59,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -79,6 +81,31 @@ jobs:
           echo "Setting version to $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           npm version $VERSION --no-git-tag-version
+
+      - name: Generate Changelog
+        shell: bash
+        run: |
+          # 获取当前 Tag
+          CURRENT_TAG=${GITHUB_REF#refs/tags/}
+          # 尝试获取上一个 Tag
+          PREV_TAG=$(git describe --tags --abbrev=0 "${CURRENT_TAG}^" 2>/dev/null || echo "")
+          
+          echo "Generating changelog from $PREV_TAG to $CURRENT_TAG"
+          
+          if [ -z "$PREV_TAG" ]; then
+            # 如果没有上一个 Tag，列出所有提交
+            LOGS=$(git log --pretty=format:"- %s (%h)" "$CURRENT_TAG")
+          else
+            # 列出两个 Tag 之间的提交
+            LOGS=$(git log --pretty=format:"- %s (%h)" "$PREV_TAG..$CURRENT_TAG")
+          fi
+          
+          # 将日志写入环境变量 (多行处理)
+          {
+            echo 'CHANGELOG<<EOF'
+            echo "$LOGS"
+            echo 'EOF'
+          } >> $GITHUB_ENV
 
       - name: Setup Clash Core (Automatic Download)
         shell: bash
@@ -143,8 +170,7 @@ jobs:
             ---
 
             ### 🛠 变更日志 / Changelog
-
-          generate_release_notes: true
+            ${{ env.CHANGELOG }}
           draft: false
           prerelease: false
         env:
