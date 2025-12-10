@@ -6,6 +6,9 @@ import path from 'path'
 import { spawn, ChildProcess, execSync } from 'child_process'
 import fs from 'fs'
 
+// 🟢 解决 Linux (Ubuntu) Root 运行/VM 环境下白屏和 GPU 报错问题
+app.disableHardwareAcceleration();
+
 // 🟢 极早期的启动日志，用于调试"起不来"的问题
 try {
     const logFile = path.join(app.getPath('userData'), 'boot_trace.log');

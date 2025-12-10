@@ -162,7 +162,7 @@ jobs:
             ### 🐧 Linux
             | 发行版 | 格式 | 架构 | 下载 (Download) |
             | :--- | :--- | :--- | :--- |
-            | **Ubuntu/Debian** | .deb | x64 | [官方](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ env.VERSION }}-Linux-x64.deb) / [加速](https://github.ednovas.xyz/https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ env.VERSION }}-Linux-x64.deb) |
+            | **Ubuntu/Debian** | .deb | x64 | [官方](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ env.VERSION }}-Linux-amd64.deb) / [加速](https://github.ednovas.xyz/https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ env.VERSION }}-Linux-amd64.deb) |
             | **Ubuntu/Debian** | .deb | ARM64 | [官方](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ env.VERSION }}-Linux-arm64.deb) / [加速](https://github.ednovas.xyz/https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/EdNovas-Cloud-${{ env.VERSION }}-Linux-arm64.deb) |
 
 
