@@ -151,13 +151,13 @@ const setSystemProxySync = (enable: boolean) => {
     }
 }
 
-const startClash = async (configPath: string) => {
+const startClash = async (configPath: string, port?: string) => {
     // 1. Kill existing child process reference
     if (clashProcess) {
         try { clashProcess.kill(); clashProcess = null; } catch (e) { }
     }
 
-    // 2. 🟢 Force kill any external ghost processes to free port 9090
+    // 2. 🟢 Force kill any external ghost processes to free port
     // Try multiple methods to ensure it's dead
     try {
         if (process.platform === 'win32') {
@@ -166,8 +166,9 @@ const startClash = async (configPath: string) => {
             // Linux/Mac: Try pkill, killall, and fuser on the port
             try { execSync('pkill -9 -f EdNovas-Core', { stdio: 'ignore' }); } catch { }
             try { execSync('killall -9 EdNovas-Core', { stdio: 'ignore' }); } catch { }
-            // Try to kill whatever is holding port 9090
-            try { execSync('fuser -k 9090/tcp', { stdio: 'ignore' }); } catch { }
+            // Try to kill whatever is holding the port
+            const killPort = port || '9090';
+            try { execSync(`fuser -k ${killPort}/tcp`, { stdio: 'ignore' }); } catch { }
         }
     } catch (e) { }
 
@@ -362,7 +363,7 @@ if (!gotTheLock) {
         createWindow();
         createTray();
 
-        ipcMain.handle('start-clash-service', async (event, configContent) => {
+        ipcMain.handle('start-clash-service', async (event, configContent, port) => {
             try {
                 const userDataPath = app.getPath('userData');
                 if (!fs.existsSync(userDataPath)) fs.mkdirSync(userDataPath, { recursive: true });
@@ -372,7 +373,7 @@ if (!gotTheLock) {
 
                 const configPath = path.join(userDataPath, 'config.yaml');
                 fs.writeFileSync(configPath, configContent, 'utf-8');
-                startClash(configPath);
+                startClash(configPath, port);
                 return { success: true, msg: 'Clash 已启动' }
             } catch (error: any) {
                 return { success: false, msg: error.message }

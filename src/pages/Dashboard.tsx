@@ -8,8 +8,16 @@ import yaml from 'js-yaml'; // 🟢 引入 YAML 解析库
 const electron = (window as any).require ? (window as any).require('electron') : null;
 const ipcRenderer = electron ? electron.ipcRenderer : null;
 
-const CLASH_API_URL = 'http://127.0.0.1:9090';
-const CLASH_WS_URL = 'ws://127.0.0.1:9090';
+const getPort = () => {
+    const saved = localStorage.getItem('clash_api_port');
+    if (saved) return saved;
+    const random = Math.floor(Math.random() * (50000 - 10000) + 10000).toString();
+    localStorage.setItem('clash_api_port', random);
+    return random;
+};
+const PORT = getPort();
+const CLASH_API_URL = `http://127.0.0.1:${PORT}`;
+const CLASH_WS_URL = `ws://127.0.0.1:${PORT}`;
 
 type ClashMode = 'Rule' | 'Global' | 'Direct';
 
@@ -261,7 +269,8 @@ const Dashboard = () => {
         }
     };
 
-    const startClashCore = async () => {
+    const startClashCore = async (overrideTunMode?: boolean) => {
+        const effectiveTunMode = overrideTunMode !== undefined ? overrideTunMode : tunMode;
         setCoreStatus('starting');
         let currentOrder: string[] = [];
         try {
@@ -310,10 +319,10 @@ const Dashboard = () => {
             // 配置文件修正
             let fixedConfig = configContent;
             if (fixedConfig.includes('external-controller')) {
-                fixedConfig = fixedConfig.replace(/^external-controller:.*$/m, "external-controller: '127.0.0.1:9090'");
+                fixedConfig = fixedConfig.replace(/^external-controller:.*$/m, `external-controller: '127.0.0.1:${PORT}'`);
                 fixedConfig = fixedConfig.replace(/^secret:.*$/m, "secret: ''");
             } else {
-                fixedConfig = `external-controller: '127.0.0.1:9090'\nsecret: ''\n${fixedConfig}`;
+                fixedConfig = `external-controller: '127.0.0.1:${PORT}'\nsecret: ''\n${fixedConfig}`;
             }
 
             // 强制 Rule 模式
@@ -323,16 +332,14 @@ const Dashboard = () => {
                 fixedConfig = `mode: Rule\n${fixedConfig}`;
             }
 
-            if (tunMode) {
+            if (effectiveTunMode) {
                 addLog('🛡️ 启用 TUN...');
                 fixedConfig = `tun:\n  enable: true\n  stack: system\n  auto-route: true\n  auto-detect-interface: true\n  dns-hijack:\n    - any:53\n${fixedConfig}`;
             }
 
             if (ipcRenderer) {
-                const res = await ipcRenderer.invoke('start-clash-service', fixedConfig);
+                const res = await ipcRenderer.invoke('start-clash-service', fixedConfig, PORT);
                 if (res.success) {
-                    setCoreStatus('running');
-                    addLog('✅ 内核启动成功');
                     setCoreStatus('running');
                     addLog('✅ 内核启动成功');
                     setTimeout(() => {
@@ -441,25 +448,6 @@ const Dashboard = () => {
         } catch (e) { }
     };
 
-    // 🟢 自动恢复 TUN 模式 (重启后)
-    useEffect(() => {
-        const checkPendingTun = async () => {
-            const pending = localStorage.getItem('pendingTunMode');
-            if (pending === 'true' && ipcRenderer) {
-                const isAdmin = await ipcRenderer.invoke('check-is-admin');
-                if (isAdmin) {
-                    addLog('🛡️ 检测到重启，自动开启 TUN 模式...');
-                    setTunMode(true);
-                    setTimeout(startClashCore, 1000); // 稍等片刻启动
-                }
-                localStorage.removeItem('pendingTunMode');
-            }
-        };
-        checkPendingTun();
-    }, []);
-
-    // ... (existing code) ...
-
     const toggleTunMode = async () => {
         // 🟢 检查管理员权限 (仅当尝试开启 TUN 时)
         if (!tunMode && ipcRenderer) {
@@ -474,8 +462,12 @@ const Dashboard = () => {
         }
 
         if (coreStatus === 'running' && !confirm('切换 TUN 需要重启内核，继续？')) return;
-        setTunMode(!tunMode);
-        if (coreStatus === 'running') setTimeout(startClashCore, 500);
+
+        const newTunMode = !tunMode;
+        setTunMode(newTunMode);
+
+        // 🟢 明确传递新的状态给启动函数，解决闭包问题
+        if (coreStatus === 'running') setTimeout(() => startClashCore(newTunMode), 500);
     };
 
     // 辅助函数
