@@ -55,6 +55,14 @@ sudo apt install ./EdNovas-Cloud-*-Linux-amd64.deb
 
 *注意：重启后的软件运行在 root 权限下，配置（如 Token）会自动从用户环境迁移。*
 
+**⚠️ 常见问题：开启 TUN 模式后白屏或无法启动？**
+如果遇到 `Authorization required` 或 `xcb_connect() failed` 错误，这是因为 root 用户无法访问当前桌面的显示服务 (X11/Wayland)。
+请在终端执行以下命令授权，然后重试：
+```bash
+xhost +si:localuser:root
+```
+*(此命令允许 root 用户访问您的图形界面，通常重启后失效)*
+
 ## 🔨 本地开发
 
 如果您想自己编译或修改代码：
