@@ -62,6 +62,12 @@ const Dashboard = () => {
     const [delays, setDelays] = useState<{ [key: string]: number | string }>({});
     const [testingGroups, setTestingGroups] = useState<Set<string>>(new Set());
 
+    // 🟢 软件更新相关状态
+    const [showUpdateModal, setShowUpdateModal] = useState(false);
+    const [remoteVersion, setRemoteVersion] = useState('');
+    const [releaseNotes, setReleaseNotes] = useState('');
+    const [downloadUrl, setDownloadUrl] = useState('');
+
     const testGroupLatency = async (groupName: string) => {
         if (testingGroups.has(groupName)) return; // 🟢 防止连续点击
 
@@ -175,6 +181,55 @@ const Dashboard = () => {
         }
     }, [sysProxy, mode]);
 
+
+
+    // 🟢 检查更新
+    useEffect(() => {
+        checkForUpdates();
+    }, []);
+
+    const checkForUpdates = async () => {
+        try {
+            // 1. 获取当前版本
+            let currentVersion = '1.0.0';
+            if (ipcRenderer) {
+                currentVersion = await ipcRenderer.invoke('get-app-version');
+            }
+
+            // 2. 获取远程版本 (GitHub API)
+            // https://api.github.com/repos/EdNovas/ednovas_clash/releases/latest
+            const res = await axios.get('https://api.github.com/repos/EdNovas/ednovas_clash/releases/latest');
+            const data = res.data;
+            const latestTag = data.tag_name; // e.g., v1.0.1
+
+            // 简单的版本比较 logic (移除 v 前缀)
+            const cleanCurrent = currentVersion.replace(/^v/, '');
+            const cleanLatest = latestTag.replace(/^v/, '');
+
+            if (compareVersions(cleanLatest, cleanCurrent) > 0) {
+                // 发现新版本
+                setRemoteVersion(latestTag);
+                setReleaseNotes(data.body || '修复了一些已知问题，优化了使用体验。');
+                setDownloadUrl(data.html_url); // 跳转到 release 页面下载
+                setShowUpdateModal(true);
+            }
+        } catch (e) {
+            console.error('Check update failed:', e);
+        }
+    };
+
+    // 版本比较辅助函数 (1: a > b, -1: a < b, 0: a == b)
+    const compareVersions = (a: string, b: string) => {
+        const pa = a.split('.');
+        const pb = b.split('.');
+        for (let i = 0; i < 3; i++) {
+            const na = Number(pa[i]);
+            const nb = Number(pb[i]);
+            if (na > nb) return 1;
+            if (nb > na) return -1;
+        }
+        return 0;
+    };
 
 
     const toggleAutoStart = async () => {
@@ -614,6 +669,41 @@ const Dashboard = () => {
                 )
             }
 
+            {/* 🟢 软件更新弹窗 */}
+            {
+                showUpdateModal && (
+                    <div style={styles.updateOverlay}>
+                        <div style={styles.updateCard}>
+                            <div style={{ fontSize: '40px', marginBottom: '10px' }}>🚀</div>
+                            <h2 style={{ marginBottom: '10px', color: '#fff' }}>发现新版本</h2>
+                            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#42e695', marginBottom: '15px' }}>
+                                {remoteVersion}
+                            </div>
+                            <div style={styles.releaseNotes}>
+                                {releaseNotes}
+                            </div>
+                            <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginTop: '20px' }}>
+                                <button
+                                    onClick={() => setShowUpdateModal(false)}
+                                    style={styles.cancelBtn}
+                                >
+                                    暂不更新
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (ipcRenderer) ipcRenderer.send('open-external', downloadUrl);
+                                        else window.open(downloadUrl, '_blank');
+                                    }}
+                                    style={styles.updateBtn}
+                                >
+                                    立即下载
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
             {/* 🟢 无有效订阅时的覆盖层 */}
             {
                 !hasValidSubscription && (
@@ -698,7 +788,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     subscriptionCard: { background: '#1e1e1e', padding: '40px', borderRadius: '15px', textAlign: 'center', width: '400px', border: '1px solid #333', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', WebkitAppRegion: 'no-drag' } as any,
     buyButton: { background: 'linear-gradient(90deg, #42e695, #3bb2b8)', border: 'none', padding: '12px 30px', borderRadius: '25px', fontSize: '16px', fontWeight: 'bold', color: '#1e1e1e', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 4px 15px rgba(66, 230, 149, 0.3)' },
 
-
+    // 🟢 更新弹窗样式
+    updateOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', zIndex: 30000, display: 'flex', justifyContent: 'center', alignItems: 'center' } as any,
+    updateCard: { background: '#252526', width: '450px', padding: '30px', borderRadius: '12px', border: '1px solid #444', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' } as any,
+    releaseNotes: { textAlign: 'left', maxHeight: '200px', overflowY: 'auto', background: '#1e1e1e', padding: '10px', borderRadius: '6px', fontSize: '13px', color: '#ccc', lineHeight: '1.5', whiteSpace: 'pre-wrap' } as any,
+    updateBtn: { background: '#42e695', color: '#1a1b1e', border: 'none', padding: '10px 25px', borderRadius: '20px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' },
+    cancelBtn: { background: 'transparent', color: '#888', border: '1px solid #444', padding: '10px 25px', borderRadius: '20px', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' },
 };
 
 export default Dashboard;

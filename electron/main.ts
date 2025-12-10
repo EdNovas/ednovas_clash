@@ -367,6 +367,11 @@ if (!gotTheLock) {
             });
             return { success: true };
         });
+
+        // 🟢 获取应用版本号
+        ipcMain.handle('get-app-version', () => {
+            return app.getVersion();
+        });
     })
 }
 
