@@ -109,42 +109,48 @@ const setSystemProxySync = (enable: boolean) => {
 }
 
 const startClash = async (configPath: string) => {
+    // 1. Kill existing child process reference
     if (clashProcess) {
-        try { clashProcess.kill() } catch (e) { }
+        try { clashProcess.kill(); clashProcess = null; } catch (e) { }
     }
-    // 🟢 启动前先尝试清理旧进程 (防止端口占用)
+
+    // 2. 🟢 Force kill any external ghost processes to free port 9090
     try {
         if (process.platform === 'win32') {
             execSync('taskkill /f /im EdNovas-Core.exe', { stdio: 'ignore' });
         } else {
             execSync('pkill -f EdNovas-Core', { stdio: 'ignore' });
         }
-    } catch (e) { }
+    } catch (e) {
+        // Ignore error if no process found
+    }
 
     try {
         const binaryPath = getClashBinaryPath();
 
-        // 🟢 Ensure binary is executable on macOS/Linux
+        // 3. Ensure binary permission
         if (process.platform !== 'win32') {
-            try {
-                fs.chmodSync(binaryPath, 0o755);
-            } catch (e) {
-                console.error('Failed to chmod binary:', e);
-            }
+            try { fs.chmodSync(binaryPath, 0o755); } catch (e) { console.error('Chmod error:', e); }
         }
 
         const configDir = path.dirname(configPath);
 
-        // 增加 1秒 延迟确保端口释放
-        await new Promise(r => setTimeout(r, 1000));
+        // 4. 🟢 Wait for port release (Port 9090 reused frequently)
+        await new Promise(r => setTimeout(r, 1500));
 
+        // 5. Spawn new process
         clashProcess = spawn(binaryPath, ['-d', configDir, '-f', configPath]);
 
         clashProcess.stdout?.on('data', (data) => {
             if (mainWindow) mainWindow.webContents.send('clash-log', data.toString());
         });
         clashProcess.stderr?.on('data', (data) => {
-            if (mainWindow) mainWindow.webContents.send('clash-log', `❌ ${data.toString()}`);
+            const msg = data.toString();
+            if (mainWindow) mainWindow.webContents.send('clash-log', `❌ ${msg}`);
+            // Check for port error specifically
+            if (msg.includes('bind: address already in use')) {
+                console.error('Port still in use!');
+            }
         });
     } catch (err: any) {
         if (mainWindow) mainWindow.webContents.send('clash-log', `❌ 启动失败: ${err.message}`);
