@@ -28,7 +28,7 @@ mac:
   icon: "public/icon.png"
   artifactName: "EdNovas-Cloud-${version}-macOS-${arch}.${ext}"
 
-  artifactName: "EdNovas-Cloud-${version}-Linux-${arch}.${ext}"
+
 
 deb:
   priority: optional
