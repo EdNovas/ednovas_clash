@@ -60,12 +60,17 @@ const Dashboard = () => {
     const [autoStart, setAutoStart] = useState(false);
 
     const [delays, setDelays] = useState<{ [key: string]: number | string }>({});
+    const [testingGroups, setTestingGroups] = useState<Set<string>>(new Set());
 
     const testGroupLatency = async (groupName: string) => {
+        if (testingGroups.has(groupName)) return; // 🟢 防止连续点击
+
         const group = proxyGroups.find(g => g.name === groupName);
         if (!group) return;
 
         addLog(`⚡ 开始测速: ${groupName}`);
+        setTestingGroups(prev => new Set(prev).add(groupName)); // 锁定
+
         const newDelays = { ...delays };
 
         // 🟢 并发测速
@@ -76,7 +81,7 @@ const Dashboard = () => {
             try {
                 // 使用 Clash API 测速
                 newDelays[nodeName] = '...'; // Loading state
-                setDelays({ ...newDelays });
+                setDelays({ ...newDelays }); // 实时更新 UI 显示 Loading
 
                 const res = await axios.get(`${CLASH_API_URL}/proxies/${encodeURIComponent(nodeName)}/delay`, {
                     params: { timeout: 2000, url: 'http://www.gstatic.com/generate_204' }
@@ -89,6 +94,11 @@ const Dashboard = () => {
 
         await Promise.all(promises);
         setDelays(prev => ({ ...prev, ...newDelays }));
+        setTestingGroups(prev => {
+            const next = new Set(prev);
+            next.delete(groupName);
+            return next;
+        }); // 解锁
         addLog(`✅ 测速完成: ${groupName}`);
     };
 
@@ -439,12 +449,8 @@ const Dashboard = () => {
     const displayedGroups = useMemo(() => {
         const sorted = [...proxyGroups];
         if (mode === 'Global') {
-            // Global 模式下，把 GLOBAL 放到第一位
-            const globalIndex = sorted.findIndex(g => g.name === 'GLOBAL' || g.name === 'Global');
-            if (globalIndex !== -1) {
-                const globalGroup = sorted.splice(globalIndex, 1)[0];
-                sorted.unshift(globalGroup);
-            }
+            // Global 模式下，只显示 GLOBAL 组
+            return sorted.filter(g => g.name === 'GLOBAL' || g.name === 'Global');
         }
         // Rule 模式下保持默认顺序 (fetchProxyGroups 已处理)
         return sorted;
@@ -544,7 +550,12 @@ const Dashboard = () => {
                                         {isMain && <span style={styles.mainTag}>核心</span>}
                                         <span
                                             onClick={() => testGroupLatency(group.name)}
-                                            style={{ marginLeft: 'auto', cursor: 'pointer', fontSize: '14px', opacity: 0.8 }}
+                                            style={{
+                                                marginLeft: 'auto',
+                                                cursor: testingGroups.has(group.name) ? 'not-allowed' : 'pointer',
+                                                fontSize: '14px',
+                                                opacity: testingGroups.has(group.name) ? 0.3 : 0.8
+                                            }}
                                             title="一键测速"
                                         >
                                             ⚡
