@@ -56,6 +56,39 @@ const Dashboard = () => {
 
 
     const [proxyGroups, setProxyGroups] = useState<ProxyGroup[]>([]);
+
+    // 🟢 自动恢复 TUN 模式 (重启后)
+    useEffect(() => {
+        const checkStartupState = async () => {
+            if (!ipcRenderer) return;
+
+            try {
+                // 1. 检查命令行参数 (Linux Root 重启)
+                const args = await ipcRenderer.invoke('get-launch-args') as string[];
+                const hasTunArg = args && args.includes('--tun-mode');
+
+                // 2. 检查 LocalStorage (Windows/Mac)
+                const pendingStorage = localStorage.getItem('pendingTunMode') === 'true';
+
+                if (hasTunArg || pendingStorage) {
+                    const isAdmin = await ipcRenderer.invoke('check-is-admin');
+                    if (isAdmin) {
+                        addLog('🛡️ 检测到重启，自动开启 TUN 模式...');
+                        setTunMode(true);
+                        // 等待一下让组件状态更新，然后启动核心
+                        setTimeout(() => startClashCore(true), 1500);
+                    } else {
+                        addLog('⚠️ 重启后仍无管理员权限，无法开启 TUN');
+                    }
+                    localStorage.removeItem('pendingTunMode');
+                }
+            } catch (e) {
+                console.error('Failed to check launch args:', e);
+            }
+        };
+        checkStartupState();
+    }, []);
+
     // 🟢 存储从 YAML 解析出的原始顺序 (带持久化)
     const [groupOrder, setGroupOrder] = useState<string[]>(() => {
         try {
@@ -656,7 +689,9 @@ const Dashboard = () => {
                             return (
                                 <div key={group.name} style={isMain ? styles.mainGroupCard : styles.groupCard}>
                                     <div style={isMain ? styles.mainGroupName : styles.groupName}>
-                                        {group.name}
+                                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                                            {renderNodeName(group.name)}
+                                        </div>
                                         {isMain && <span style={styles.mainTag}>核心</span>}
                                         <span
                                             onClick={() => testGroupLatency(group.name)}

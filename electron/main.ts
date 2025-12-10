@@ -305,23 +305,22 @@ ipcMain.handle('relaunch-as-admin', async () => {
             });
         } else if (process.platform === 'linux') {
             // Linux: 尝试使用 pkexec
-            // 注意: AppImage 环境下 exe 路径可能需要特殊处理，这里暂按标准逻辑
-            const cmd = `pkexec "${exe}"`;
-            // 如果是 AppImage, process.env.APPIMAGE 包含原始路径
-            const targetExe = process.env.APPIMAGE || exe;
-            const linuxCmd = `pkexec "${targetExe}" --no-sandbox`; // 添加 --no-sandbox 防止 root 运行 chrome 报错
+            // 🟢 仅支持非 AppImage 模式 (deb安装通常在 /opt/... 或 /usr/bin/...)
 
-            console.log('Relaunching Linux:', linuxCmd);
-            const { exec } = require('child_process');
-            exec(linuxCmd, (error: any) => {
-                if (error) {
-                    resolve({ success: false, error: error.message });
-                } else {
-                    isQuitting = true;
-                    app.exit(0);
-                    resolve({ success: true });
-                }
+            // 构建参数: pkexec <exe> --no-sandbox --tun-mode
+            const finalArgs = [exe, '--no-sandbox', '--tun-mode'];
+
+            console.log('Relaunching Linux:', 'pkexec', finalArgs.join(' '));
+
+            const child = spawn('pkexec', finalArgs, {
+                detached: true,
+                stdio: 'ignore'
             });
+            child.unref();
+
+            isQuitting = true;
+            app.exit(0);
+            resolve({ success: true });
         } else {
             resolve({ success: false, error: 'Unsupported platform for auto-relaunch' });
         }
@@ -341,6 +340,11 @@ ipcMain.handle('check-is-admin', () => {
         // Unix/Linux/Mac: 检查 uid 是否为 0 (root)
         return process.getuid ? process.getuid() === 0 : false;
     }
+});
+
+// 🟢 获取启动参数 (用于检测是否带有 --tun-mode)
+ipcMain.handle('get-launch-args', () => {
+    return process.argv;
 });
 
 // 🟢 单实例锁 (防止开启多个窗口)

@@ -36,7 +36,6 @@ deb:
 
 linux:
   target:
-    - AppImage
     - deb
   icon: "public/icon.png"
   category: Network
