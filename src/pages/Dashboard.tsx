@@ -92,46 +92,6 @@ const Dashboard = () => {
         addLog(`✅ 测速完成: ${groupName}`);
     };
 
-    // ... (existing code) ...
-
-                                    <div style={isMain ? styles.mainGroupName : styles.groupName}>
-                                        {group.name}
-                                        {isMain && <span style={styles.mainTag}>核心</span>}
-                                        <span 
-                                            onClick={() => testGroupLatency(group.name)} 
-                                            style={{ marginLeft: 'auto', cursor: 'pointer', fontSize: '14px', opacity: 0.8 }} 
-                                            title="一键测速"
-                                        >
-                                            ⚡
-                                        </span>
-                                    </div>
-                                    <div style={styles.groupSelectWrapper}>
-                                        <select
-                                            value={group.now}
-                                            onChange={(e) => changeGroupNode(group.name, e.target.value)}
-                                            style={styles.groupSelect}
-                                        >
-                                            {group.all.map(node => {
-                                                let delayText = '';
-                                                const d = delays[node];
-                                                if (d === '...') delayText = ' ⏳';
-                                                else if (d === -1) delayText = ' ❌';
-                                                else if (typeof d === 'number') delayText = ` ${d}ms`;
-                                                
-                                                return (
-                                                    <option key={node} value={node}>
-                                                        {node}{delayText}
-                                                    </option>
-                                                )
-                                            })}
-                                        </select>
-                                        <div style={isMain ? styles.mainSelectedNodeTag : styles.selectedNodeTag}>
-                                            {group.now} 
-                                            {delays[group.now] && typeof delays[group.now] === 'number' && <span style={{color: '#42e695', marginLeft: 8}}>{delays[group.now]}ms</span>}
-                                            <span style={{ float: 'right', opacity: 0.5 }}>▼</span>
-                                        </div>
-                                    </div>
-
     const wsRef = useRef<WebSocket | null>(null);
     const hasAutoStarted = useRef(false);
 
@@ -582,6 +542,13 @@ const Dashboard = () => {
                                     <div style={isMain ? styles.mainGroupName : styles.groupName}>
                                         {group.name}
                                         {isMain && <span style={styles.mainTag}>核心</span>}
+                                        <span
+                                            onClick={() => testGroupLatency(group.name)}
+                                            style={{ marginLeft: 'auto', cursor: 'pointer', fontSize: '14px', opacity: 0.8 }}
+                                            title="一键测速"
+                                        >
+                                            ⚡
+                                        </span>
                                     </div>
                                     <div style={styles.groupSelectWrapper}>
                                         <select
@@ -589,12 +556,24 @@ const Dashboard = () => {
                                             onChange={(e) => changeGroupNode(group.name, e.target.value)}
                                             style={styles.groupSelect}
                                         >
-                                            {group.all.map(node => (
-                                                <option key={node} value={node}>{node}</option>
-                                            ))}
+                                            {group.all.map(node => {
+                                                let delayText = '';
+                                                const d = delays[node];
+                                                if (d === '...') delayText = ' ⏳';
+                                                else if (d === -1) delayText = ' ❌';
+                                                else if (typeof d === 'number') delayText = ` ${d}ms`;
+
+                                                return (
+                                                    <option key={node} value={node}>
+                                                        {node}{delayText}
+                                                    </option>
+                                                )
+                                            })}
                                         </select>
                                         <div style={isMain ? styles.mainSelectedNodeTag : styles.selectedNodeTag}>
-                                            {group.now} <span style={{ float: 'right', opacity: 0.5 }}>▼</span>
+                                            {group.now}
+                                            {delays[group.now] && typeof delays[group.now] === 'number' && <span style={{ color: '#42e695', marginLeft: 8 }}>{delays[group.now]}ms</span>}
+                                            <span style={{ float: 'right', opacity: 0.5 }}>▼</span>
                                         </div>
                                     </div>
                                 </div>
