@@ -35,7 +35,7 @@ const GlassModal: React.FC<GlassModalProps> = ({ isOpen, onClose, url, title }) 
                         <webview
                             src={url}
                             style={{ width: '100%', height: '100%', border: 'none' }}
-                            allowpopups="true"
+                            allowpopups={true as any}
                         />
                     ) : (
                         <iframe
