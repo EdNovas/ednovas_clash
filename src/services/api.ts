@@ -19,8 +19,15 @@ const DEFAULT_BACKUPS = [
 
 const api = axios.create({
     baseURL: API_URL,
-    timeout: 10000,
+    timeout: 30000,
 });
+
+// 🟢 手动切换 API 节点 (用于失败重试)
+export const updateApiUrl = (newUrl: string) => {
+    console.log(`[API] Switching to ${newUrl}`);
+    API_URL = newUrl;
+    api.defaults.baseURL = newUrl;
+};
 
 let initPromise: Promise<string> | null = null;
 
@@ -37,6 +44,8 @@ const checkUrl = async (url: string): Promise<string> => {
 };
 
 // 获取最快的可用 URL
+export let apiCandidates: string[] = []; // 🟢 导出候选列表给外部重试用
+
 export const initApi = async () => {
     if (initPromise) return initPromise;
 
@@ -55,6 +64,7 @@ export const initApi = async () => {
 
 
         const candidates = [...new Set([...remoteDomains, ...DEFAULT_BACKUPS])];
+        apiCandidates = candidates; // 🟢 保存到导出变量
 
         // 2. 并发测试所有 URL
         try {

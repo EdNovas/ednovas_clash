@@ -370,19 +370,63 @@ const Dashboard = () => {
             } else {
                 addLog('🚀 获取订阅...');
                 const authToken = localStorage.getItem('token');
-                const subRes = await getSubscribe(authToken!);
-                const subData = subRes.data?.data || subRes.data;
-                const subscribeToken = subData.token;
 
-                const cleanApiUrl = API_URL.replace(/\/$/, '');
-                const finalSubscribeUrl = `${cleanApiUrl}/2cvme3wa8i/${subscribeToken}&flag=clash`;
+                // � 动态引入以获取最新状态和切换方法
+                const { apiCandidates, updateApiUrl, API_URL: initialApiUrl } = require('../services/api');
 
-                addLog(`📥 下载配置...`);
-                configContent = await downloadConfig(finalSubscribeUrl);
+                let retryCount = 0;
+                let currentTryUrl = initialApiUrl;
+                const failedCandidates = new Set<string>();
+                failedCandidates.add(currentTryUrl);
 
-                // 🟢 更新缓存
-                localStorage.setItem('cachedClashConfig', configContent);
-                localStorage.setItem('lastSubscribeTime', now.toString());
+                // 根据候选数量动态决定重试次数，至少3次
+                const maxRetries = Math.max((apiCandidates?.length || 0) + 1, 3);
+
+                while (retryCount < maxRetries) {
+                    try {
+                        const subRes = await getSubscribe(authToken!);
+                        const subData = subRes.data?.data || subRes.data;
+                        const subscribeToken = subData.token;
+
+                        // 获取当前最新的 API_URL (因为可能在上一次循环 switch 了)
+                        const { API_URL: latestApiUrl } = require('../services/api');
+                        const cleanApiUrl = latestApiUrl.replace(/\/$/, '');
+                        const finalSubscribeUrl = `${cleanApiUrl}/2cvme3wa8i/${subscribeToken}&flag=clash`;
+
+                        addLog(`📥 下载配置...`);
+                        configContent = await downloadConfig(finalSubscribeUrl);
+
+                        // 🟢 更新缓存
+                        localStorage.setItem('cachedClashConfig', configContent);
+                        localStorage.setItem('lastSubscribeTime', now.toString());
+                        break; // 成功则跳出循环
+                    } catch (e: any) {
+                        retryCount++;
+                        addLog(`⚠️ 当前节点获取失败 (${retryCount}/${maxRetries})`);
+
+                        // 记录当前失败的 URL
+                        const { API_URL: failedUrl } = require('../services/api');
+                        failedCandidates.add(failedUrl);
+
+                        // 寻找下一个可用的候选节点
+                        const nextCandidate = apiCandidates.find((url: string) => !failedCandidates.has(url));
+
+                        if (nextCandidate) {
+                            addLog(`🔄 切换至备用节点: ${nextCandidate}`);
+                            updateApiUrl(nextCandidate);
+                            // 等待 1 秒让网络栈重置
+                            await new Promise(r => setTimeout(r, 1000));
+                        } else {
+                            if (retryCount >= maxRetries) {
+                                addLog(`❌ 所有节点均不可用，请检查网络`);
+                                throw e;
+                            }
+                            // 如果没有新节点可切了，但重试次数没用完，就等待后原地重试
+                            addLog(`⏳ 等待 3 秒后重试...`);
+                            await new Promise(r => setTimeout(r, 3000));
+                        }
+                    }
+                }
             }
 
             // 🟢 解析 YAML 获取原始组顺序
