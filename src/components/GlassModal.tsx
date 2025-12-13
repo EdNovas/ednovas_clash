@@ -65,6 +65,7 @@ const GlassModal: React.FC<GlassModalProps> = ({ isOpen, onClose, url, title }) 
                             src={url}
                             style={{ width: '100%', height: '100%', border: 'none' }}
                             allowpopups={true as any} // 🟢 Fix type error
+                            partition="persist:clash-webview" // 🟢 Enable session persistence
                         />
                     ) : (
                         <iframe
