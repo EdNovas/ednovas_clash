@@ -166,7 +166,7 @@ const Dashboard = () => {
     const [remoteVersion, setRemoteVersion] = useState('');
     const [releaseNotes, setReleaseNotes] = useState('');
     const [downloadUrl, setDownloadUrl] = useState('');
-    const [modal, setModal] = useState({ isOpen: false, url: '', title: '' });
+    const [modal, setModal] = useState<{ isOpen: boolean; url: string; title: string }>({ isOpen: false, url: '', title: '' });
 
     const testGroupLatency = async (groupName: string) => {
         if (testingGroups.has(groupName)) return; // 🟢 防止连续点击

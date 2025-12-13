@@ -8,10 +8,34 @@ interface GlassModalProps {
 }
 
 const GlassModal: React.FC<GlassModalProps> = ({ isOpen, onClose, url, title }) => {
+    // Toggle Crisp chat visibility
+    React.useEffect(() => {
+        const crisp = (window as any).$crisp;
+        if (crisp) {
+            if (isOpen) {
+                crisp.push(['do', 'chat:hide']);
+            } else {
+                crisp.push(['do', 'chat:show']);
+            }
+        }
+        return () => {
+            if (crisp) crisp.push(['do', 'chat:show']);
+        };
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     // Detect if running in Electron
     const isElectron = (window as any).require && (window as any).process && (window as any).process.type;
+
+    const handleOpenExternally = () => {
+        const electron = (window as any).require ? (window as any).require('electron') : null;
+        if (electron) {
+            electron.shell.openExternal(url);
+        } else {
+            window.open(url, '_blank');
+        }
+    };
 
     return (
         <div style={styles.overlay}>
@@ -19,9 +43,14 @@ const GlassModal: React.FC<GlassModalProps> = ({ isOpen, onClose, url, title }) 
                 {/* Header / Close Bar */}
                 <div style={styles.header}>
                     <span style={styles.title}>{title || 'EdNovas'}</span>
-                    <button onClick={onClose} style={styles.closeBtn}>
-                        ✕
-                    </button>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button onClick={handleOpenExternally} style={styles.iconBtn} title="在浏览器打开">
+                            🌐
+                        </button>
+                        <button onClick={onClose} style={styles.iconBtn}>
+                            ✕
+                        </button>
+                    </div>
                 </div>
 
                 {/* Content */}
@@ -35,7 +64,7 @@ const GlassModal: React.FC<GlassModalProps> = ({ isOpen, onClose, url, title }) 
                         <webview
                             src={url}
                             style={{ width: '100%', height: '100%', border: 'none' }}
-                            allowpopups={true as any}
+                            allowpopups={true as any} // 🟢 Fix type error
                         />
                     ) : (
                         <iframe
@@ -62,20 +91,24 @@ const styles: { [key: string]: React.CSSProperties } = {
         zIndex: 9999,
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center',
+        alignItems: 'flex-start', // 🟢 Changed to flex-start for top padding
+        paddingTop: '50px', // 🟢 Less padding
         animation: 'fadeIn 0.3s ease',
+        pointerEvents: 'auto', // 🟢 Allow clicks
     },
     modalContainer: {
-        width: '90%',
-        height: '90%',
-        backgroundColor: 'rgba(255, 255, 255, 0.85)',
+        width: '90%', // 🟢 Wider
+        height: '92%', // 🟢 Taller
+        maxHeight: 'calc(100vh - 60px)', // 🟢 Maximize space
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
         borderRadius: '20px',
         boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
         border: '1px solid rgba(255, 255, 255, 0.18)',
-    },
+        WebkitAppRegion: 'no-drag', // 🟢 Only disable drag on modal itself
+    } as any,
     header: {
         height: '50px',
         display: 'flex',
@@ -91,10 +124,10 @@ const styles: { [key: string]: React.CSSProperties } = {
         fontWeight: 'bold',
         color: '#333',
     },
-    closeBtn: {
+    iconBtn: {
         background: 'transparent',
         border: 'none',
-        fontSize: '20px',
+        fontSize: '18px',
         cursor: 'pointer',
         color: '#666',
         padding: '5px',
