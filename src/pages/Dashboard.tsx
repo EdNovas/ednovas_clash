@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSubscribe, downloadConfig } from '../services/api';
-import { API_URL } from '../services/api';
+import { getSubscribe, downloadConfig, API_URL, apiCandidates, updateApiUrl } from '../services/api';
 import axios from 'axios';
 import yaml from 'js-yaml'; // 🟢 引入 YAML 解析库
 import GlassModal from '../components/GlassModal';
@@ -371,11 +370,11 @@ const Dashboard = () => {
                 addLog('🚀 获取订阅...');
                 const authToken = localStorage.getItem('token');
 
-                // � 动态引入以获取最新状态和切换方法
-                const { apiCandidates, updateApiUrl, API_URL: initialApiUrl } = require('../services/api');
+                // 🟢 动态引入以获取最新状态和切换方法
+                // const { apiCandidates, updateApiUrl, API_URL: initialApiUrl } = require('../services/api');
 
                 let retryCount = 0;
-                let currentTryUrl = initialApiUrl;
+                let currentTryUrl = API_URL;
                 const failedCandidates = new Set<string>();
                 failedCandidates.add(currentTryUrl);
 
@@ -389,8 +388,8 @@ const Dashboard = () => {
                         const subscribeToken = subData.token;
 
                         // 获取当前最新的 API_URL (因为可能在上一次循环 switch 了)
-                        const { API_URL: latestApiUrl } = require('../services/api');
-                        const cleanApiUrl = latestApiUrl.replace(/\/$/, '');
+                        // const { API_URL: latestApiUrl } = require('../services/api');
+                        const cleanApiUrl = API_URL.replace(/\/$/, '');
                         const finalSubscribeUrl = `${cleanApiUrl}/2cvme3wa8i/${subscribeToken}&flag=clash`;
 
                         addLog(`📥 下载配置...`);
@@ -405,8 +404,8 @@ const Dashboard = () => {
                         addLog(`⚠️ 当前节点获取失败 (${retryCount}/${maxRetries})`);
 
                         // 记录当前失败的 URL
-                        const { API_URL: failedUrl } = require('../services/api');
-                        failedCandidates.add(failedUrl);
+                        // const { API_URL: failedUrl } = require('../services/api');
+                        failedCandidates.add(API_URL);
 
                         // 寻找下一个可用的候选节点
                         const nextCandidate = apiCandidates.find((url: string) => !failedCandidates.has(url));
