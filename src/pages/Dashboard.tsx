@@ -167,6 +167,7 @@ const Dashboard = () => {
     const [releaseNotes, setReleaseNotes] = useState('');
     const [downloadUrl, setDownloadUrl] = useState('');
     const [modal, setModal] = useState<{ isOpen: boolean; url: string; title: string }>({ isOpen: false, url: '', title: '' });
+    const lastRefreshRef = useRef(0); // 🟢 防止频繁刷新
 
     const testGroupLatency = async (groupName: string) => {
         if (testingGroups.has(groupName)) return; // 🟢 防止连续点击
@@ -565,6 +566,26 @@ const Dashboard = () => {
         if (coreStatus === 'running') setTimeout(() => startClashCore(newTunMode), 500);
     };
 
+    const refreshSubscription = async () => {
+        const now = Date.now();
+        if (now - lastRefreshRef.current < 5000) {
+            addLog('⏳ 操作太频繁，请稍后再试...');
+            return;
+        }
+        lastRefreshRef.current = now;
+
+        if (coreStatus === 'starting') return;
+
+        const token = localStorage.getItem('token');
+        if (token) fetchUserInfo(token); // Update traffic info
+
+        localStorage.removeItem('cachedClashConfig');
+        localStorage.removeItem('lastSubscribeTime');
+        addLog('🔄 正在强制刷新订阅...');
+
+        await startClashCore();
+    };
+
     // 辅助函数
     const fetchUserInfo = async (token: string) => {
         try {
@@ -640,6 +661,9 @@ const Dashboard = () => {
                                     });
                                 }} style={{ marginLeft: '10px', background: 'linear-gradient(90deg, #42e695, #3bb2b8)', color: '#1e1e1e', padding: '3px 10px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(66, 230, 149, 0.3)', display: 'inline-block', WebkitAppRegion: 'no-drag' } as any}>
                                     ⚡ 立即续费
+                                </span>
+                                <span onClick={refreshSubscription} style={{ marginLeft: '8px', background: 'rgba(122, 162, 247, 0.15)', color: '#7aa2f7', border: '1px solid rgba(122, 162, 247, 0.3)', padding: '2px 8px', borderRadius: '12px', cursor: 'pointer', fontSize: '11px', display: 'inline-block', WebkitAppRegion: 'no-drag' } as any} title="强制更新订阅配置">
+                                    🔄 刷新
                                 </span>
                             </div>
 
