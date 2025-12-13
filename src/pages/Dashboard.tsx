@@ -4,6 +4,7 @@ import { getSubscribe, downloadConfig } from '../services/api';
 import { API_URL } from '../services/api';
 import axios from 'axios';
 import yaml from 'js-yaml'; // 🟢 引入 YAML 解析库
+import GlassModal from '../components/GlassModal';
 
 const electron = (window as any).require ? (window as any).require('electron') : null;
 const ipcRenderer = electron ? electron.ipcRenderer : null;
@@ -165,6 +166,7 @@ const Dashboard = () => {
     const [remoteVersion, setRemoteVersion] = useState('');
     const [releaseNotes, setReleaseNotes] = useState('');
     const [downloadUrl, setDownloadUrl] = useState('');
+    const [modal, setModal] = useState({ isOpen: false, url: '', title: '' });
 
     const testGroupLatency = async (groupName: string) => {
         if (testingGroups.has(groupName)) return; // 🟢 防止连续点击
@@ -631,9 +633,11 @@ const Dashboard = () => {
                             <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '2px' }}>
                                 {userData.expired_at === 0 ? '长期有效' : `到期: ${new Date(userData.expired_at * 1000).toLocaleDateString()}`}
                                 <span onClick={() => {
-                                    const url = `${API_URL}/#/stage/buysubs`;
-                                    if (ipcRenderer) ipcRenderer.send('open-external', url);
-                                    else window.open(url, '_blank');
+                                    setModal({
+                                        isOpen: true,
+                                        url: `${API_URL}/#/stage/buysubs`,
+                                        title: '订阅管理'
+                                    });
                                 }} style={{ marginLeft: '10px', background: 'linear-gradient(90deg, #42e695, #3bb2b8)', color: '#1e1e1e', padding: '3px 10px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(66, 230, 149, 0.3)', display: 'inline-block', WebkitAppRegion: 'no-drag' } as any}>
                                     ⚡ 立即续费
                                 </span>
@@ -797,7 +801,14 @@ const Dashboard = () => {
             </div>
 
 
+
             {/* 🟢 悬浮日志窗口 (可隐藏) */}
+            <GlassModal
+                isOpen={modal.isOpen}
+                onClose={() => setModal({ ...modal, isOpen: false })}
+                url={modal.url}
+                title={modal.title}
+            />
             {
                 showLogWindow && (
                     <div style={styles.logOverlay}>

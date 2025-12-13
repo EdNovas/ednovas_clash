@@ -274,7 +274,7 @@ const createWindow = () => {
             symbolColor: '#ffffff',
             height: 45
         },
-        webPreferences: { nodeIntegration: true, contextIsolation: false, webSecurity: false },
+        webPreferences: { nodeIntegration: true, contextIsolation: false, webSecurity: false, webviewTag: true },
     })
     mainWindow.setMenu(null);
     if (process.env.VITE_DEV_SERVER_URL) {

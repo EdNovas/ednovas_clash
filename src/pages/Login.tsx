@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login, API_URL, initApi } from '../services/api';
+import GlassModal from '../components/GlassModal';
 
 // 兼容 Electron 引入
 const electron = (window as any).require ? (window as any).require('electron') : null;
@@ -14,6 +15,7 @@ const Login = () => {
 
     // 🔵 新增：用于控制页面是否正在检查登录状态
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+    const [modal, setModal] = useState({ isOpen: false, url: '', title: '' });
 
     const navigate = useNavigate();
 
@@ -80,11 +82,11 @@ const Login = () => {
     };
 
     const handleRegister = () => {
-        if (shell) {
-            shell.openExternal(`${API_URL}/#/register`);
-        } else {
-            window.open(`${API_URL}/#/register`, '_blank');
-        }
+        setModal({
+            isOpen: true,
+            url: `${API_URL}/#/register`,
+            title: '注册新账户'
+        });
     };
 
     // 🔵 如果正在检查登录状态，显示空白或加载动画，防止闪烁
@@ -157,9 +159,11 @@ const Login = () => {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
                         <span onClick={() => {
-                            const url = `${API_URL}/#/reset-password`;
-                            if (shell) shell.openExternal(url);
-                            else window.open(url, '_blank');
+                            setModal({
+                                isOpen: true,
+                                url: `${API_URL}/#/reset-password`,
+                                title: '重置密码'
+                            });
                         }} style={{ fontSize: '12px', color: '#667eea', cursor: 'pointer', textDecoration: 'none' }}>
                             忘记密码？
                         </span>
@@ -190,6 +194,13 @@ const Login = () => {
             <div style={styles.footer}>
                 Powered by EdNovas
             </div>
+
+            <GlassModal
+                isOpen={modal.isOpen}
+                onClose={() => setModal({ ...modal, isOpen: false })}
+                url={modal.url}
+                title={modal.title}
+            />
         </div>
     );
 };
