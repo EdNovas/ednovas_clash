@@ -735,15 +735,25 @@ const Dashboard = () => {
         modeBarBg: '#2d2d2d',
         dropdownBg: '#252526',
         headerBg: 'transparent',
+        nodeTagBg: '#333',
+        nodeTagText: '#ccc',
+        nodeTagBorder: '#444',
+        trafficTextSecondary: '#ccc', // 🟢 流量/到期时间次要文字
+        buttonText: '#fff', // 按钮默认文字 (深色背景下)
     } : {
         bg: '#f0f0f0',  // 🟢 纯色背景，与标题栏完全一致
-        text: '#18181a',
-        textSecondary: '#666',
+        text: '#374151', // 柔和的深灰色 (Slate-700)
+        textSecondary: '#6b7280', // 柔和的次级灰 (Slate-500)
         cardBg: '#ffffff',
-        cardBorder: '#ddd',
-        modeBarBg: '#e0e0e0',
+        cardBorder: '#e5e7eb', // 极淡的边框 (Slate-200)
+        modeBarBg: '#ffffff', // 纯白底色，显得更干净
         dropdownBg: '#ffffff',
         headerBg: 'transparent',
+        nodeTagBg: '#f3f4f6', // 浅灰标签背景 (Slate-100)
+        nodeTagText: '#374151',
+        nodeTagBorder: '#e5e7eb',
+        trafficTextSecondary: '#555', // 🟢 浅色模式下加深，防止看不清
+        buttonText: '#fff', // 彩色按钮文字保持白色 (但要注意背景对比度)
     };
 
     return (
@@ -759,13 +769,13 @@ const Dashboard = () => {
 
                     <h2 style={{ margin: '0 0 5px 0', fontSize: '24px', fontWeight: '800', background: 'linear-gradient(45deg, #7aa2f7, #b4f9f8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>EdNovas云</h2>
                     {userData ? (
-                        <div style={styles.trafficInfo}>
+                        <div style={{ ...styles.trafficInfo, color: theme.trafficTextSecondary }}>
                             <div style={styles.trafficText}>
                                 <span>已用: {formatBytes(userData.u + userData.d)}</span>
-                                <span style={{ margin: '0 5px', color: '#666' }}>/</span>
+                                <span style={{ margin: '0 5px', opacity: 0.5 }}>/</span>
                                 <span>总计: {formatBytes(userData.transfer_enable)}</span>
                             </div>
-                            <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '2px' }}>
+                            <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '2px', color: theme.trafficTextSecondary }}>
                                 {userData.expired_at === 0 ? '长期有效' : `到期: ${new Date(userData.expired_at * 1000).toLocaleDateString()}`}
                                 <span onClick={() => {
                                     setModal({
@@ -773,7 +783,7 @@ const Dashboard = () => {
                                         url: `${API_URL}/#/stage/buysubs`,
                                         title: '订阅管理'
                                     });
-                                }} style={{ marginLeft: '10px', background: 'linear-gradient(90deg, #42e695, #3bb2b8)', color: '#1e1e1e', padding: '3px 10px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(66, 230, 149, 0.3)', display: 'inline-block', WebkitAppRegion: 'no-drag' } as any}>
+                                }} style={{ marginLeft: '10px', background: 'linear-gradient(90deg, #42e695, #3bb2b8)', color: '#fff', padding: '3px 10px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(66, 230, 149, 0.3)', display: 'inline-block', WebkitAppRegion: 'no-drag', textShadow: '0 1px 2px rgba(0,0,0,0.1)' } as any}>
                                     ⚡ 立即续费
                                 </span>
                                 <span onClick={refreshSubscription} style={{ marginLeft: '8px', background: 'rgba(122, 162, 247, 0.15)', color: '#7aa2f7', border: '1px solid rgba(122, 162, 247, 0.3)', padding: '2px 8px', borderRadius: '12px', cursor: 'pointer', fontSize: '11px', display: 'inline-block', WebkitAppRegion: 'no-drag' } as any} title="强制更新订阅配置">
@@ -800,18 +810,26 @@ const Dashboard = () => {
                             onClick={(!platform || platform !== 'linux' || isAdmin) ? toggleTunMode : undefined}
                             style={{
                                 ...styles.tagBtn,
-                                background: tunMode ? '#e6a23c' : '#333',
+                                background: tunMode ? '#e6a23c' : (isDarkMode ? '#333' : '#e5e7eb'), // 🟢 浅色模式下未开启时用浅灰
+                                color: tunMode ? '#fff' : (isDarkMode ? '#ccc' : '#4b5563'), // 🟢 文字颜色适配
                                 WebkitAppRegion: 'no-drag',
                                 opacity: (platform === 'linux' && !isAdmin) ? 0.3 : 1,
                                 cursor: (platform === 'linux' && !isAdmin) ? 'not-allowed' : 'pointer',
-                                pointerEvents: (platform === 'linux' && !isAdmin) ? 'none' : 'auto'
+                                pointerEvents: (platform === 'linux' && !isAdmin) ? 'none' : 'auto',
+                                border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid #d1d5db'
                             } as any}
                             title={platform === 'linux' && !isAdmin ? '请使用 sudo 启动以启用 TUN' : ''}
                         >
                             {(platform === 'linux' && !isAdmin) ? '需 Root 权限' : 'TUN 模式'}
                         </div>
 
-                        <div onClick={() => toggleSystemProxy()} style={{ ...styles.proxyBtn, background: sysProxy ? '#ff4d4f' : '#42e695', WebkitAppRegion: 'no-drag' } as any}>
+                        <div onClick={() => toggleSystemProxy()} style={{
+                            ...styles.proxyBtn,
+                            background: sysProxy ? '#ff4d4f' : '#42e695',
+                            color: '#fff', // 🟢 强制白色文字，增加阴影增强可读性
+                            textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                            WebkitAppRegion: 'no-drag'
+                        } as any}>
                             {sysProxy ? '断开连接' : '一键连接'}
                         </div>
 
@@ -892,7 +910,15 @@ const Dashboard = () => {
                                                 e.stopPropagation();
                                                 setActiveDropdown(activeDropdown === group.name ? null : group.name);
                                             }}
-                                            style={isMain ? styles.mainSelectedNodeTag : styles.selectedNodeTag}
+                                            style={{
+                                                ...(isMain ? styles.mainSelectedNodeTag : styles.selectedNodeTag),
+                                                // 🟢 适配非核心卡片的标签颜色
+                                                ...(!isMain ? {
+                                                    background: theme.nodeTagBg,
+                                                    color: theme.nodeTagText,
+                                                    borderColor: theme.nodeTagBorder
+                                                } : {})
+                                            }}
                                         >
                                             <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '20px' }}>
                                                 {renderNodeName(group.now)}
