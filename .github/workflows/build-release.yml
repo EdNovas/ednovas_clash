@@ -89,13 +89,32 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
+          # 检查是否有更改需要暂存
+          if [[ -n $(git status -s) ]]; then
+            echo "Stashing changes..."
+            git stash
+            HAS_CHANGES=true
+          else
+            echo "No changes to stash."
+            HAS_CHANGES=false
+          fi
+          
+          # 切换到 main 分支并拉取最新代码
+          git checkout -B main origin/main
+          git pull origin main
+          
+          # 如果有暂存的更改，则恢复
+          if [ "$HAS_CHANGES" = true ]; then
+            git stash pop
+          fi
+          
           # 检查 package.json 是否有变化
           if git diff --quiet package.json; then
             echo "No version change detected"
           else
             git add package.json package-lock.json
             git commit -m "chore: bump version to ${{ env.VERSION }} [skip ci]"
-            git push origin HEAD:main
+            git push origin main
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
