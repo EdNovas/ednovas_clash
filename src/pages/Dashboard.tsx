@@ -119,6 +119,15 @@ const Dashboard = () => {
     const [delays, setDelays] = useState<{ [key: string]: number | string }>({});
     const [testingGroups, setTestingGroups] = useState<Set<string>>(new Set());
 
+    // 🟢 深色/浅色模式
+    const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+        const saved = localStorage.getItem('isDarkMode');
+        return saved !== null ? saved === 'true' : true; // 默认深色
+    });
+
+    // 🟢 版本号
+    const [appVersion, setAppVersion] = useState<string>('');
+
     // 🟢 下拉菜单状态
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
@@ -200,12 +209,30 @@ const Dashboard = () => {
 
         await Promise.all(promises);
         setDelays(prev => ({ ...prev, ...newDelays }));
+
+        // 🟢 测速完成后，对节点按延迟排序 (低延迟在前)
+        setProxyGroups(prev => prev.map(g => {
+            if (g.name !== groupName) return g;
+            const sortedAll = [...g.all].sort((a, b) => {
+                const delayA = newDelays[a];
+                const delayB = newDelays[b];
+                // 特殊节点放最后
+                if (a === 'DIRECT' || a === 'REJECT') return 1;
+                if (b === 'DIRECT' || b === 'REJECT') return -1;
+                // 未测试或失败的节点放后面
+                if (typeof delayA !== 'number' || delayA === -1) return 1;
+                if (typeof delayB !== 'number' || delayB === -1) return -1;
+                return delayA - delayB;
+            });
+            return { ...g, all: sortedAll };
+        }));
+
         setTestingGroups(prev => {
             const next = new Set(prev);
             next.delete(groupName);
             return next;
         }); // 解锁
-        addLog(`✅ 测速完成: ${groupName}`);
+        addLog(`✅ 测速完成: ${groupName} (已按延迟排序)`);
     };
 
     const wsRef = useRef<WebSocket | null>(null);
@@ -250,6 +277,11 @@ const Dashboard = () => {
             ipcRenderer.invoke('get-auto-start').then((enabled: boolean) => {
                 setAutoStart(enabled);
             });
+
+            // 🟢 启动时同步标题栏颜色
+            const savedDarkMode = localStorage.getItem('isDarkMode');
+            const isDark = savedDarkMode !== null ? savedDarkMode === 'true' : true;
+            ipcRenderer.send('update-titlebar-color', isDark ? '#171819' : '#f0f0f0');
         }
 
         return () => {
@@ -294,6 +326,8 @@ const Dashboard = () => {
             let currentVersion = '1.0.0';
             if (ipcRenderer) {
                 currentVersion = await ipcRenderer.invoke('get-app-version');
+                // 🟢 使用本地版本号显示
+                setAppVersion(currentVersion);
             }
 
             // 2. 获取远程版本 (GitHub API)
@@ -315,6 +349,11 @@ const Dashboard = () => {
             }
         } catch (e) {
             console.error('Check update failed:', e);
+            // 如果获取失败，仍然显示本地版本号
+            if (ipcRenderer) {
+                const localVersion = await ipcRenderer.invoke('get-app-version');
+                setAppVersion(localVersion);
+            }
         }
     };
 
@@ -675,8 +714,40 @@ const Dashboard = () => {
         return sorted;
     }, [proxyGroups, mode]);
 
+    // 🟢 切换深色/浅色模式
+    const toggleDarkMode = () => {
+        const newMode = !isDarkMode;
+        setIsDarkMode(newMode);
+        localStorage.setItem('isDarkMode', String(newMode));
+        // 🟢 通知主进程更新标题栏颜色
+        if (ipcRenderer) {
+            ipcRenderer.send('update-titlebar-color', newMode ? '#171819' : '#f0f0f0');
+        }
+    };
+
+    // 🟢 主题色系
+    const theme = isDarkMode ? {
+        bg: '#171819',  // 🟢 纯色背景，与标题栏完全一致
+        text: '#fff',
+        textSecondary: '#ccc',
+        cardBg: '#252526',
+        cardBorder: '#3e3e3e',
+        modeBarBg: '#2d2d2d',
+        dropdownBg: '#252526',
+        headerBg: 'transparent',
+    } : {
+        bg: '#f0f0f0',  // 🟢 纯色背景，与标题栏完全一致
+        text: '#18181a',
+        textSecondary: '#666',
+        cardBg: '#ffffff',
+        cardBorder: '#ddd',
+        modeBarBg: '#e0e0e0',
+        dropdownBg: '#ffffff',
+        headerBg: 'transparent',
+    };
+
     return (
-        <div style={styles.container}>
+        <div style={{ ...styles.container, background: theme.bg, color: theme.text }}>
 
 
             {/* 顶部栏 */}
@@ -747,16 +818,25 @@ const Dashboard = () => {
                         <div onClick={() => setShowLogWindow(true)} style={{ ...styles.iconBtn, WebkitAppRegion: 'no-drag' } as any} title="查看日志">
                             📃
                         </div>
+
+                        {/* 🟢 深色/浅色模式切换 */}
+                        <div
+                            onClick={toggleDarkMode}
+                            style={{ ...styles.iconBtn, WebkitAppRegion: 'no-drag' } as any}
+                            title={isDarkMode ? '切换到浅色模式' : '切换到深色模式'}
+                        >
+                            {isDarkMode ? '☀️' : '🌙'}
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* 模式切换栏 */}
-            <div style={styles.modeBar}>
+            <div style={{ ...styles.modeBar, background: theme.modeBarBg }}>
                 {(['Rule', 'Global', 'Direct'] as ClashMode[]).map(m => (
                     <div
                         key={m} onClick={() => changeMode(m)}
-                        style={{ ...styles.modeBtn, background: mode === m ? '#7aa2f7' : 'transparent', color: mode === m ? '#fff' : '#aaa' }}
+                        style={{ ...styles.modeBtn, background: mode === m ? '#7aa2f7' : 'transparent', color: mode === m ? '#fff' : (isDarkMode ? '#aaa' : '#666') }}
                     >
                         {m === 'Rule' ? '规则模式' : m === 'Global' ? '全局模式' : '直连模式'}
                     </div>
@@ -767,7 +847,7 @@ const Dashboard = () => {
                             <input type="checkbox" checked={autoStart} onChange={toggleAutoStart} />
                             <span className="slider"></span>
                         </label>
-                        <span style={{ fontSize: '12px', color: '#aaa', fontWeight: 'bold' }}>自启</span>
+                        <span style={{ fontSize: '12px', color: isDarkMode ? '#aaa' : '#666', fontWeight: 'bold' }}>自启</span>
                     </div>
                     <div onClick={() => { localStorage.removeItem('token'); navigate('/'); }} style={styles.logoutText}>退出登录</div>
                 </div>
@@ -780,8 +860,12 @@ const Dashboard = () => {
                         displayedGroups.map(group => {
                             const isMain = isMainGroup(group.name);
                             return (
-                                <div key={group.name} style={isMain ? styles.mainGroupCard : styles.groupCard}>
-                                    <div style={isMain ? styles.mainGroupName : styles.groupName}>
+                                <div key={group.name} style={{
+                                    ...(isMain ? styles.mainGroupCard : styles.groupCard),
+                                    background: isMain ? (isDarkMode ? 'linear-gradient(145deg, #2b3040, #252526)' : 'linear-gradient(145deg, #e8f0ff, #ffffff)') : theme.cardBg,
+                                    borderColor: isMain ? '#7aa2f7' : theme.cardBorder,
+                                }}>
+                                    <div style={{ ...(isMain ? styles.mainGroupName : styles.groupName), color: theme.text }}>
                                         <div style={{ display: 'flex', alignItems: 'center' }}>
                                             {renderNodeName(group.name)}
                                         </div>
@@ -819,7 +903,7 @@ const Dashboard = () => {
 
                                         {/* 🟢 自定义下拉列表 */}
                                         {activeDropdown === group.name && (
-                                            <div className="custom-dropdown-list" style={styles.dropdownList}>
+                                            <div className="custom-dropdown-list" style={{ ...styles.dropdownList, background: theme.dropdownBg, borderColor: theme.cardBorder }}>
                                                 {group.all.map(node => {
                                                     let delayText = null;
                                                     const d = delays[node];
@@ -839,9 +923,10 @@ const Dashboard = () => {
                                                             style={{
                                                                 ...styles.dropdownItem,
                                                                 background: isSelected ? 'rgba(122, 162, 247, 0.2)' : undefined,
-                                                                color: isSelected ? '#7aa2f7' : '#ccc'
+                                                                color: isSelected ? '#7aa2f7' : theme.textSecondary,
+                                                                borderBottomColor: isDarkMode ? '#333' : '#eee'
                                                             }}
-                                                            onMouseEnter={(e) => e.currentTarget.style.background = isSelected ? 'rgba(122, 162, 247, 0.3)' : '#333'}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = isSelected ? 'rgba(122, 162, 247, 0.3)' : (isDarkMode ? '#333' : '#f0f0f0')}
                                                             onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'rgba(122, 162, 247, 0.2)' : 'transparent'}
                                                         >
                                                             <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '10px' }}>
@@ -959,6 +1044,23 @@ const Dashboard = () => {
                     </div>
                 )
             }
+
+            {/* 🟢 版本号显示 (左下角) */}
+            {appVersion && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '10px',
+                    left: '15px',
+                    fontSize: '11px',
+                    color: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
+                    fontFamily: 'monospace',
+                    zIndex: 100,
+                    userSelect: 'none',
+                    pointerEvents: 'none'
+                }}>
+                    v{appVersion}
+                </div>
+            )}
         </div >
     );
 };

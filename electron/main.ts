@@ -259,6 +259,26 @@ const createTray = () => {
     ipcMain.on('sync-tray-state', (_event, { sysProxy, mode }) => {
         updateMenu(sysProxy, mode);
     });
+
+    // 🟢 监听主题切换，动态更新标题栏颜色
+    ipcMain.on('update-titlebar-color', (_event, bgColor: string) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            const isDark = bgColor === '#171819';
+            console.log(`[Theme] Updating titlebar: bg=${bgColor}, isDark=${isDark}`);
+            try {
+                // setTitleBarOverlay 仅在 Windows 上有效
+                if (process.platform === 'win32') {
+                    mainWindow.setTitleBarOverlay({
+                        color: bgColor,
+                        symbolColor: isDark ? '#ffffff' : '#1a1a1a',
+                        height: 45
+                    });
+                }
+            } catch (e) {
+                console.error('[Theme] Failed to update titlebar:', e);
+            }
+        }
+    });
 }
 
 const createWindow = () => {
@@ -270,7 +290,7 @@ const createWindow = () => {
         icon: path.join(__dirname, process.env.VITE_DEV_SERVER_URL ? '../public/ezv9d7ezv9d7ezv9.jpg' : '../dist/ezv9d7ezv9d7ezv9.jpg'),
         titleBarStyle: 'hidden',
         titleBarOverlay: {
-            color: '#1a1b1e',
+            color: '#171819',
             symbolColor: '#ffffff',
             height: 45
         },

@@ -82,6 +82,24 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           npm version $VERSION --no-git-tag-version
 
+      - name: Commit Version Update
+        if: matrix.os == 'ubuntu-latest' && matrix.arch == 'x64'  # 只在一个 runner 上执行，避免冲突
+        shell: bash
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # 检查 package.json 是否有变化
+          if git diff --quiet package.json; then
+            echo "No version change detected"
+          else
+            git add package.json package-lock.json
+            git commit -m "chore: bump version to ${{ env.VERSION }} [skip ci]"
+            git push origin HEAD:main
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Generate Changelog
         shell: bash
         run: |
