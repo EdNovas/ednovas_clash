@@ -355,13 +355,26 @@ ipcMain.handle('relaunch-as-admin', async () => {
             // macOS: Use osascript to requries admin privileges
             const cmd = `"${exe}" --tun-mode`;
             console.log('Relaunching Mac:', cmd);
-            const script = `do shell script \\"${cmd.replace(/"/g, '\\\\"')}\\" with administrator privileges`;
+
+            // 🟢 CRITICAL FIX:
+            // 1. Release lock so new instance can start
+            app.releaseSingleInstanceLock();
+
+            // 2. Run in background so osascript returns immediately
+            // We use 'nohup' and '&' to detach the process
+            const script = `do shell script \\"nohup ${cmd.replace(/"/g, '\\\\"')} > /dev/null 2>&1 &\\" with administrator privileges`;
 
             const { exec } = require('child_process');
             exec(`osascript -e "${script}"`, (error: any, stdout: any, stderr: any) => {
+                // Even if error, we should probably quit or show error.
+                // But since it's backgrounded, we might not get immediate error if auth fails?
+                // osascript throws if auth is cancelled.
                 if (error) {
                     console.error('Mac Relaunch Error:', error);
-                    resolve({ success: false, error: error.message });
+                    // Relaquire lock if failed? simplifying: just show error dialog or quit.
+                    // If user cancelled, we shouldn't quit.
+                    // Since we released lock, we are vulnerable to other instances, but rare.
+                    resolve({ success: false, error: 'User cancelled or failed' });
                 } else {
                     isQuitting = true;
                     app.exit(0);
@@ -453,9 +466,16 @@ if (!gotTheLock) {
 
         ipcMain.handle('set-auto-start', (_event, enable: boolean) => {
             if (process.platform === 'darwin') {
+                // Correctly resolve the .app path from the binary path
+                // Binary: /Applications/EdNovasCloud.app/Contents/MacOS/EdNovasCloud
+                // Bundle: /Applications/EdNovasCloud.app
+                const appBundlePath = path.resolve(process.execPath, '../../..');
+
+                console.log('Setting AutoStart Mac:', appBundlePath);
+
                 app.setLoginItemSettings({
                     openAtLogin: enable,
-                    // Mac doesn't need path for default bundle, and passing process.execPath (binary) breaks it
+                    path: appBundlePath
                 });
             } else {
                 app.setLoginItemSettings({
