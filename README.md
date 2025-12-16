@@ -32,8 +32,12 @@
 
 ### 🍎 macOS
 下载 `.dmg` 文件，将 `EdNovas Cloud` 拖入 `Applications` 文件夹。
-> 如提示“文件已损坏”或“无法验证开发者”，请在终端运行：
-> `sudo xattr -rd com.apple.quarantine /Applications/EdNovas\ Cloud.app`
+> **⚠️ 首次运行如果提示“文件已损坏”或“无法打开” / "cannot be verified"：**
+> 
+> 1. **方法一（推荐）**：前往 **系统设置 > 隐私与安全性 (System Settings > Privacy & Security)**，找到 Security 区域，在 "EdNovasCloud was blocked..." 提示旁点击 **"仍要打开" (Open Anyway)**。
+> 2. **方法二**：在 Finder 中找到应用，**右键点击**图标，选择 **打开**，然后在弹出的确认框中再次点击 **打开**。
+> 3. **终端命令**（如果以上均无效）：
+>    `sudo xattr -rd com.apple.quarantine /Applications/EdNovas\ Cloud.app`
 
 ### 🐧 Linux (Ubuntu/Debian)
 

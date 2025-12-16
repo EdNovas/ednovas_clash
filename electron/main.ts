@@ -351,6 +351,23 @@ ipcMain.handle('relaunch-as-admin', async () => {
             isQuitting = true;
             app.exit(0);
             resolve({ success: true });
+        } else if (process.platform === 'darwin') {
+            // macOS: Use osascript to requries admin privileges
+            const cmd = `"${exe}" --tun-mode`;
+            console.log('Relaunching Mac:', cmd);
+            const script = `do shell script \\"${cmd.replace(/"/g, '\\\\"')}\\" with administrator privileges`;
+
+            const { exec } = require('child_process');
+            exec(`osascript -e "${script}"`, (error: any, stdout: any, stderr: any) => {
+                if (error) {
+                    console.error('Mac Relaunch Error:', error);
+                    resolve({ success: false, error: error.message });
+                } else {
+                    isQuitting = true;
+                    app.exit(0);
+                    resolve({ success: true });
+                }
+            });
         } else {
             resolve({ success: false, error: 'Unsupported platform for auto-relaunch' });
         }
@@ -404,6 +421,7 @@ if (!gotTheLock) {
         ipcMain.handle('start-clash-service', async (event, configContent, port) => {
             try {
                 const userDataPath = app.getPath('userData');
+                // Ensure userData directory exists
                 if (!fs.existsSync(userDataPath)) fs.mkdirSync(userDataPath, { recursive: true });
 
                 // 🟢 检查并复制 GEO 数据库
@@ -434,11 +452,18 @@ if (!gotTheLock) {
         });
 
         ipcMain.handle('set-auto-start', (_event, enable: boolean) => {
-            app.setLoginItemSettings({
-                openAtLogin: enable,
-                path: process.execPath, // 明确指定可执行文件路径
-                args: []
-            });
+            if (process.platform === 'darwin') {
+                app.setLoginItemSettings({
+                    openAtLogin: enable,
+                    // Mac doesn't need path for default bundle, and passing process.execPath (binary) breaks it
+                });
+            } else {
+                app.setLoginItemSettings({
+                    openAtLogin: enable,
+                    path: process.execPath, // 明确指定可执行文件路径
+                    args: []
+                });
+            }
             return { success: true };
         });
 
