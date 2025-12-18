@@ -94,7 +94,8 @@ const Login = () => {
         return (
             <div style={styles.container}>
                 <div style={{ color: 'white', fontSize: '18px', fontWeight: 'bold' }}>
-                    正在验证身份...
+                    正在验证身份... <br />
+                    (Debug: Component Mounted)
                 </div>
             </div>
         );

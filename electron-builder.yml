@@ -27,6 +27,7 @@ mac:
   target: dmg
   icon: "public/icon.png"
   artifactName: "EdNovas-Cloud-${version}-macOS-${arch}.${ext}"
+  identity: null  # Skip code signing (no paid Apple Developer account)
 
 
 

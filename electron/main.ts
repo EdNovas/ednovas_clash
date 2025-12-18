@@ -1,7 +1,7 @@
 // electron/main.ts
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 
-import { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron'
 import path from 'path'
 import { spawn, ChildProcess, execSync } from 'child_process'
 import fs from 'fs'
@@ -20,7 +20,7 @@ if (process.platform === 'linux') {
 try {
     const logFile = path.join(app.getPath('userData'), 'boot_trace.log');
     fs.appendFileSync(logFile, `${new Date().toISOString()} - App Starting... Exec: ${process.execPath}\n`);
-} catch (e) { }
+} catch { }
 
 // 🟢 错误日志记录
 const logError = (error: any) => {
@@ -41,7 +41,7 @@ const logError = (error: any) => {
             const fallbackLogPath = path.join(userDataPath, 'crash-error-fallback.log');
             const message = error.stack || error.toString();
             fs.appendFileSync(fallbackLogPath, `${new Date().toISOString()} - [Fallback] ${message}\r\n`);
-        } catch (ignored) { }
+        } catch { }
     }
 }
 
@@ -149,15 +149,15 @@ const setSystemProxySync = (enable: boolean) => {
             // 简单适配 GNOME 环境
             // 1. GNOME Settings (Keep existing)
             if (enable) {
-                try { execSync('gsettings set org.gnome.system.proxy mode "manual"'); } catch (e) { }
-                try { execSync('gsettings set org.gnome.system.proxy.http host "127.0.0.1"'); } catch (e) { }
-                try { execSync(`gsettings set org.gnome.system.proxy.http port ${PROXY_PORT}`); } catch (e) { }
-                try { execSync('gsettings set org.gnome.system.proxy.https host "127.0.0.1"'); } catch (e) { }
-                try { execSync(`gsettings set org.gnome.system.proxy.https port ${PROXY_PORT}`); } catch (e) { }
-                try { execSync('gsettings set org.gnome.system.proxy.socks host "127.0.0.1"'); } catch (e) { }
-                try { execSync(`gsettings set org.gnome.system.proxy.socks port ${PROXY_PORT}`); } catch (e) { }
+                try { execSync('gsettings set org.gnome.system.proxy mode "manual"'); } catch { }
+                try { execSync('gsettings set org.gnome.system.proxy.http host "127.0.0.1"'); } catch { }
+                try { execSync(`gsettings set org.gnome.system.proxy.http port ${PROXY_PORT}`); } catch { }
+                try { execSync('gsettings set org.gnome.system.proxy.https host "127.0.0.1"'); } catch { }
+                try { execSync(`gsettings set org.gnome.system.proxy.https port ${PROXY_PORT}`); } catch { }
+                try { execSync('gsettings set org.gnome.system.proxy.socks host "127.0.0.1"'); } catch { }
+                try { execSync(`gsettings set org.gnome.system.proxy.socks port ${PROXY_PORT}`); } catch { }
             } else {
-                try { execSync('gsettings set org.gnome.system.proxy mode "none"'); } catch (e) { }
+                try { execSync('gsettings set org.gnome.system.proxy mode "none"'); } catch { }
             }
         } catch (e) {
             console.error('Linux Proxy Set Error:', e);
@@ -168,7 +168,7 @@ const setSystemProxySync = (enable: boolean) => {
 const startClash = async (configPath: string, port?: string) => {
     // 1. Kill existing child process reference
     if (clashProcess) {
-        try { clashProcess.kill(); clashProcess = null; } catch (e) { }
+        try { clashProcess.kill(); clashProcess = null; } catch { }
     }
 
     // 2. 🟢 Force kill any external ghost processes to free port
@@ -184,7 +184,7 @@ const startClash = async (configPath: string, port?: string) => {
             const killPort = port || '9090';
             try { execSync(`fuser -k ${killPort}/tcp`, { stdio: 'ignore' }); } catch { }
         }
-    } catch (e) { }
+    } catch { }
 
     try {
         const binaryPath = getClashBinaryPath();
@@ -296,6 +296,7 @@ const createWindow = () => {
         },
         webPreferences: { nodeIntegration: true, contextIsolation: false, webSecurity: false, webviewTag: true },
     })
+    // mainWindow.webContents.openDevTools(); // Uncomment for debugging
     mainWindow.setMenu(null);
     if (process.env.VITE_DEV_SERVER_URL) {
         mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
@@ -352,31 +353,41 @@ ipcMain.handle('relaunch-as-admin', async () => {
             app.exit(0);
             resolve({ success: true });
         } else if (process.platform === 'darwin') {
-            // macOS: Use osascript to requries admin privileges
-            const cmd = `"${exe}" --tun-mode`;
-            console.log('Relaunching Mac:', cmd);
+            // macOS: Use osascript to request admin privileges
+            const exe = app.getPath('exe');
 
-            // 🟢 CRITICAL FIX:
-            // 1. Release lock so new instance can start
+            // Create a launcher script that will be run with admin privileges
+            const launcherScript = path.join(app.getPath('userData'), 'tun_launcher.sh');
+            const launcherContent = `#!/bin/bash
+"${exe}" --tun-mode > /dev/null 2>&1 &
+disown
+exit 0
+`;
+            fs.writeFileSync(launcherScript, launcherContent, { mode: 0o755 });
+
+            // Now run this script with admin privileges
+            const escapedLauncher = launcherScript.replace(/"/g, '\\"');
+            const script = `do shell script "\\"${escapedLauncher}\\"" with administrator privileges`;
+
+            // Release lock so new instance can start
             app.releaseSingleInstanceLock();
 
-            // 2. Run in background so osascript returns immediately
-            // We use 'nohup' and '&' to detach the process
-            const script = `do shell script \\"nohup ${cmd.replace(/"/g, '\\\\"')} > /dev/null 2>&1 &\\" with administrator privileges`;
+            // Force quit mechanism: Set a timeout to quit regardless of osascript result
+            setTimeout(() => {
+                isQuitting = true;
+                setSystemProxySync(false);
+                app.exit(0);
+            }, 3000);
 
             const { exec } = require('child_process');
-            exec(`osascript -e "${script}"`, (error: any, stdout: any, stderr: any) => {
-                // Even if error, we should probably quit or show error.
-                // But since it's backgrounded, we might not get immediate error if auth fails?
-                // osascript throws if auth is cancelled.
+            exec(`osascript -e '${script}'`, (error: any) => {
                 if (error) {
-                    console.error('Mac Relaunch Error:', error);
-                    // Relaquire lock if failed? simplifying: just show error dialog or quit.
-                    // If user cancelled, we shouldn't quit.
-                    // Since we released lock, we are vulnerable to other instances, but rare.
+                    // Re-acquire lock since we failed or user cancelled
+                    app.requestSingleInstanceLock();
                     resolve({ success: false, error: 'User cancelled or failed' });
                 } else {
                     isQuitting = true;
+                    setSystemProxySync(false);
                     app.exit(0);
                     resolve({ success: true });
                 }
@@ -411,13 +422,13 @@ ipcMain.handle('get-launch-args', () => {
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-    try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Startup] Duplicate instance detected. Quitting.\n`); } catch (e) { }
+    try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Startup] Duplicate instance detected. Quitting.\n`); } catch { }
     app.quit();
 } else {
-    try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Startup] Instance lock acquired. Starting main window.\n`); } catch (e) { }
+    try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Startup] Instance lock acquired. Starting main window.\n`); } catch { }
 
     app.on('second-instance', (_event, _commandLine, _workingDirectory) => {
-        try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Event] Second instance triggered. Focusing main window.\n`); } catch (e) { }
+        try { fs.appendFileSync(path.join(app.getPath('userData'), 'boot_trace.log'), `${new Date().toISOString()} - [Event] Second instance triggered. Focusing main window.\n`); } catch { }
         // 当运行第二个实例时，聚焦到主窗口
         if (mainWindow) {
             if (mainWindow.isMinimized()) mainWindow.restore();
@@ -461,26 +472,81 @@ if (!gotTheLock) {
 
         // 🟢 开机自启控制
         ipcMain.handle('get-auto-start', () => {
-            return app.getLoginItemSettings().openAtLogin;
+            if (process.platform === 'darwin') {
+                // Check for LaunchAgent plist file
+                const homeDir = require('os').homedir();
+                const plistPath = path.join(homeDir, 'Library', 'LaunchAgents', 'com.ednovas.cloud.plist');
+                return fs.existsSync(plistPath);
+            } else {
+                return app.getLoginItemSettings().openAtLogin;
+            }
         });
 
         ipcMain.handle('set-auto-start', (_event, enable: boolean) => {
             if (process.platform === 'darwin') {
-                // Correctly resolve the .app path from the binary path
-                // Binary: /Applications/EdNovasCloud.app/Contents/MacOS/EdNovasCloud
-                // Bundle: /Applications/EdNovasCloud.app
-                const appBundlePath = path.resolve(process.execPath, '../../..');
+                try {
+                    const appBundlePath = path.resolve(process.execPath, '../../..');
+                    // For unsigned apps, use LaunchAgent plist file
+                    const homeDir = require('os').homedir();
+                    const launchAgentsDir = path.join(homeDir, 'Library', 'LaunchAgents');
+                    const plistPath = path.join(launchAgentsDir, 'com.ednovas.cloud.plist');
 
-                console.log('Setting AutoStart Mac:', appBundlePath);
+                    if (enable) {
+                        // Create LaunchAgents directory if it doesn't exist
+                        if (!fs.existsSync(launchAgentsDir)) {
+                            fs.mkdirSync(launchAgentsDir, { recursive: true });
+                        }
 
-                app.setLoginItemSettings({
-                    openAtLogin: enable,
-                    path: appBundlePath
-                });
+                        // Create plist content
+                        const binaryPath = path.join(appBundlePath, 'Contents', 'MacOS', 'EdNovasCloud');
+                        const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.ednovas.cloud</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>${binaryPath}</string>
+        <string>--hidden</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>ProcessType</key>
+    <string>Interactive</string>
+</dict>
+</plist>`;
+                        fs.writeFileSync(plistPath, plistContent, 'utf-8');
+
+                        // Register with launchctl
+                        try {
+                            const { execSync } = require('child_process');
+                            const uid = process.getuid ? process.getuid() : 0;
+                            try { execSync(`launchctl bootout gui/${uid} "${plistPath}"`, { stdio: 'ignore' }); } catch { }
+                            execSync(`launchctl bootstrap gui/${uid} "${plistPath}"`);
+                        } catch (e: any) {
+                            console.error('launchctl error:', e);
+                        }
+                    } else {
+                        // Remove the plist file
+                        if (fs.existsSync(plistPath)) {
+                            try {
+                                const { execSync } = require('child_process');
+                                const uid = process.getuid ? process.getuid() : 0;
+                                execSync(`launchctl bootout gui/${uid} "${plistPath}"`, { stdio: 'ignore' });
+                            } catch { }
+
+                            fs.unlinkSync(plistPath);
+                        }
+                    }
+                    return { success: true };
+                } catch (err: any) {
+                    return { success: false, error: err.message };
+                }
             } else {
                 app.setLoginItemSettings({
                     openAtLogin: enable,
-                    path: process.execPath, // 明确指定可执行文件路径
+                    path: process.execPath,
                     args: []
                 });
             }
