@@ -413,7 +413,7 @@ const Dashboard = () => {
                 // const { apiCandidates, updateApiUrl, API_URL: initialApiUrl } = require('../services/api');
 
                 let retryCount = 0;
-                let currentTryUrl = API_URL;
+                const currentTryUrl = API_URL;
                 const failedCandidates = new Set<string>();
                 failedCandidates.add(currentTryUrl);
 
