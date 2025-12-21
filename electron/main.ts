@@ -269,7 +269,7 @@ const createTray = () => {
                 // setTitleBarOverlay 仅在 Windows 上有效
                 if (process.platform === 'win32') {
                     mainWindow.setTitleBarOverlay({
-                        color: bgColor,
+                        color: '#00000000',  // 🟢 保持透明背景
                         symbolColor: isDark ? '#ffffff' : '#1a1a1a',
                         height: 45
                     });
@@ -290,7 +290,7 @@ const createWindow = () => {
         icon: path.join(__dirname, process.env.VITE_DEV_SERVER_URL ? '../public/ezv9d7ezv9d7ezv9.jpg' : '../dist/ezv9d7ezv9d7ezv9.jpg'),
         titleBarStyle: 'hidden',
         titleBarOverlay: {
-            color: '#171819',
+            color: '#00000000',  // 🟢 透明背景，让应用背景色透出
             symbolColor: '#ffffff',
             height: 45
         },
