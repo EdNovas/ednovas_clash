@@ -36,15 +36,20 @@ let initPromise: Promise<string> | null = null;
 // Event Listener for Polling Status
 type PollingStatusCallback = (status: string) => void;
 let statusListeners: PollingStatusCallback[] = [];
+let lastStatus = '准备就绪'; // 🟢 Default status
 
 export const onPollingStatus = (callback: PollingStatusCallback) => {
     statusListeners.push(callback);
+    // 🟢 Immediately emit current status to new listener
+    if (lastStatus) callback(lastStatus);
+
     return () => {
         statusListeners = statusListeners.filter(l => l !== callback);
     };
 };
 
 const emitStatus = (status: string) => {
+    lastStatus = status;
     statusListeners.forEach(l => l(status));
 };
 

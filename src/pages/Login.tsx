@@ -18,7 +18,7 @@ const Login = () => {
     const [modal, setModal] = useState({ isOpen: false, url: '', title: '' });
 
     // 🟢 Polling Status & Manual Config
-    const [pollingStatus, setPollingStatus] = useState('...');
+    const [pollingStatus, setPollingStatus] = useState('Connecting to server...');
     const [showUrlEdit, setShowUrlEdit] = useState(false);
     const [customUrl, setCustomUrl] = useState(API_URL);
 
