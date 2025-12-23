@@ -23,17 +23,35 @@ const api = axios.create({
 });
 
 // 🟢 手动切换 API 节点 (用于失败重试)
+// 🟢 手动切换 API 节点 (用于失败重试)
 export const updateApiUrl = (newUrl: string) => {
     console.log(`[API] Switching to ${newUrl}`);
+    emitStatus(`已手动切换至: ${newUrl}`);
     API_URL = newUrl;
     api.defaults.baseURL = newUrl;
 };
 
 let initPromise: Promise<string> | null = null;
 
+// Event Listener for Polling Status
+type PollingStatusCallback = (status: string) => void;
+let statusListeners: PollingStatusCallback[] = [];
+
+export const onPollingStatus = (callback: PollingStatusCallback) => {
+    statusListeners.push(callback);
+    return () => {
+        statusListeners = statusListeners.filter(l => l !== callback);
+    };
+};
+
+const emitStatus = (status: string) => {
+    statusListeners.forEach(l => l(status));
+};
+
 // 检查单个 URL 是否可用
 const checkUrl = async (url: string): Promise<string> => {
     try {
+        emitStatus(`正在检测: ${url}`);
         // 尝试 HEAD 请求或简单的 GET
         // 这里的 timeout 设置短一点，快速筛选
         await axios.get(`${url}/api/v1/guest/comm/config`, { timeout: 3000 });
@@ -50,6 +68,7 @@ export const initApi = async () => {
     if (initPromise) return initPromise;
 
     initPromise = (async () => {
+        emitStatus('正在获取云端节点列表...');
         console.log('正在寻找最佳服务器...');
 
         // 1. 尝试获取远程配置列表
@@ -68,12 +87,15 @@ export const initApi = async () => {
 
         // 2. 并发测试所有 URL
         try {
+            emitStatus(`正在并发测试 ${candidates.length} 个节点...`);
             const fastestUrl = await Promise.any(candidates.map(url => checkUrl(url)));
+            emitStatus(`✅ 已连接: ${fastestUrl}`);
             console.log(`✅ 选定最佳节点: ${fastestUrl}`);
             API_URL = fastestUrl;
             api.defaults.baseURL = fastestUrl; // 更新 axios 实例
             return fastestUrl;
         } catch (error) {
+            emitStatus('❌ 所有节点连接失败，使用默认');
             console.error('❌ 所有节点均不可用', error);
             // 虽然都失败了，还是保留默认
             return API_URL;

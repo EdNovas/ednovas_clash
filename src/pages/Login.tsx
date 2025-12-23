@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login, API_URL, initApi } from '../services/api';
+import { login, API_URL, initApi, onPollingStatus, updateApiUrl } from '../services/api';
 import GlassModal from '../components/GlassModal';
 
 // 兼容 Electron 引入
@@ -17,11 +17,25 @@ const Login = () => {
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
     const [modal, setModal] = useState({ isOpen: false, url: '', title: '' });
 
+    // 🟢 Polling Status & Manual Config
+    const [pollingStatus, setPollingStatus] = useState('...');
+    const [showUrlEdit, setShowUrlEdit] = useState(false);
+    const [customUrl, setCustomUrl] = useState(API_URL);
+
     const navigate = useNavigate();
+
+    useEffect(() => {
+        // Subscribe to polling updates
+        const unsub = onPollingStatus((status) => {
+            setPollingStatus(status);
+        });
+        return () => unsub();
+    }, []);
 
     useEffect(() => {
         // 🔵 核心逻辑：自动检测登录状态
         const checkAuth = () => {
+            // ... existing logic ...
             const token = localStorage.getItem('token');
             if (token) {
                 // 如果有 token，直接跳转到仪表盘
@@ -191,6 +205,20 @@ const Login = () => {
                 </form>
             </div>
 
+            {/* 🟢 Polling Status Display */}
+            <div style={{
+                position: 'absolute',
+                bottom: '40px',
+                color: 'rgba(255,255,255,0.4)',
+                fontSize: '11px',
+                cursor: 'pointer',
+                textAlign: 'center',
+                width: '100%',
+                zIndex: 2
+            }} onClick={() => setShowUrlEdit(true)}>
+                <span>{pollingStatus}</span>
+            </div>
+
             <div style={styles.footer}>
                 Powered by EdNovas
             </div>
@@ -201,6 +229,45 @@ const Login = () => {
                 url={modal.url}
                 title={modal.title}
             />
+
+            {/* 🟢 URL Edit Modal */}
+            {showUrlEdit && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                    background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)',
+                    display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999
+                }}>
+                    <div style={{
+                        background: 'white', padding: '20px', borderRadius: '15px',
+                        width: '300px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+                    }}>
+                        <h4 style={{ margin: '0 0 15px 0', color: '#333' }}>手动配置服务器</h4>
+                        <input
+                            type="text"
+                            value={customUrl}
+                            onChange={e => setCustomUrl(e.target.value)}
+                            placeholder="https://example.com"
+                            style={{
+                                width: '100%', padding: '10px', borderRadius: '8px',
+                                border: '1px solid #ccc', marginBottom: '15px', boxSizing: 'border-box'
+                            }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                            <button onClick={() => setShowUrlEdit(false)} style={{
+                                background: '#eee', border: 'none', padding: '8px 15px',
+                                borderRadius: '6px', cursor: 'pointer'
+                            }}>取消</button>
+                            <button onClick={() => {
+                                updateApiUrl(customUrl);
+                                setShowUrlEdit(false);
+                            }} style={{
+                                background: '#667eea', color: 'white', border: 'none',
+                                padding: '8px 15px', borderRadius: '6px', cursor: 'pointer'
+                            }}>保存并切换</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
