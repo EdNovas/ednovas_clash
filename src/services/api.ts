@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // ⚠️ Dynamic API Selection
-export let API_URL = 'https://new.ednovas.dev'; // Default start
+export let API_URL = 'https://re.ednovas.life'; // Default start - 智能代理地址
 
 // 备用地址列表 (可以从外部 JSON 获取)
 // 模拟从 GitHub 或其他地方获取的列表
@@ -12,7 +12,9 @@ const FETCH_REMOTE_CONFIG_URLS = [
 ];
 
 // 硬编码备用列表 (防止远程获取失败)
+// re.ednovas.life 是智能代理地址，可以自动判断和代理订阅链接，放在第一位
 const DEFAULT_BACKUPS = [
+    'https://re.ednovas.life',
     'https://new.ednovas.org',
     'https://cdn.ednovas.world',
 ];
