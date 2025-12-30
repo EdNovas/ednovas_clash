@@ -4,7 +4,7 @@
   "description": "EdNovas云 官方客户端",
   "author": "EdNovas <ednovas@ednovas.tech>",
   "private": true,
-  "version": "1.0.57",
+  "version": "1.0.58",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
