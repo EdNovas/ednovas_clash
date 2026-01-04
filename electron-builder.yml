@@ -27,6 +27,12 @@ mac:
   target: dmg
   icon: "public/icon.png"
   artifactName: "EdNovas-Cloud-${version}-macOS-${arch}.${ext}"
+  # Ad-hoc signing to prevent "damaged" error on macOS
+  identity: null
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: "build/entitlements.mac.plist"
+  entitlementsInherit: "build/entitlements.mac.plist"
 
 
 
