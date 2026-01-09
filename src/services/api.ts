@@ -160,7 +160,7 @@ export const downloadConfig = async (subscribeUrl: string) => {
 
     const response = await axios.get(subscribeUrl, {
         responseType: 'text',
-        headers: { 'User-Agent': 'ClashforWindows/0.19.0' }
+        headers: { 'User-Agent': 'ednovasclash' }
     });
     return response.data;
 };
