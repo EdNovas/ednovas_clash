@@ -152,6 +152,7 @@ export const getSubscribe = async (token: string) => {
 };
 
 // 下载实际的 YAML 配置文件
+// 注意: 实际 User-Agent 由 electron/main.ts 中的拦截器控制 (ednovasclash/版本号)
 export const downloadConfig = async (subscribeUrl: string) => {
     // 确保下载链接包含 flag=clash
     if (subscribeUrl.indexOf('flag=clash') === -1 && subscribeUrl.indexOf('clash') === -1) {
@@ -160,7 +161,6 @@ export const downloadConfig = async (subscribeUrl: string) => {
 
     const response = await axios.get(subscribeUrl, {
         responseType: 'text',
-        headers: { 'User-Agent': 'ednovasclash' }
     });
     return response.data;
 };

@@ -1,7 +1,7 @@
 // electron/main.ts
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 
-import { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, session } from 'electron'
 import path from 'path'
 import { spawn, ChildProcess, execSync } from 'child_process'
 import fs from 'fs'
@@ -438,6 +438,13 @@ if (!gotTheLock) {
     });
 
     app.whenReady().then(() => {
+        // 🟢 拦截所有请求，强制修改 User-Agent 为 ednovasclash/版本号
+        const appVersion = app.getVersion();
+        session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+            details.requestHeaders['User-Agent'] = `ednovasclash/${appVersion}`;
+            callback({ requestHeaders: details.requestHeaders });
+        });
+
         createWindow();
         createTray();
 
